@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stone-chronicle-db
+    environment:
+      POSTGRES_DB: springdb
+      POSTGRES_USER: springuser
+      POSTGRES_PASSWORD: "p@ss"
+    ports:
+      - "5432:5432"
+    volumes:
+      - stone-chronicle-pgdata:/var/lib/postgresql/data
+
+volumes:
+  stone-chronicle-pgdata:

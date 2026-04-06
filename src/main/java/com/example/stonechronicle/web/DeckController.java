@@ -1,5 +1,6 @@
 package com.example.stonechronicle.web;
 
+import com.example.stonechronicle.domain.LibraryCardView;
 import com.example.stonechronicle.service.DeckService;
 import com.example.stonechronicle.service.LibraryService;
 import java.util.ArrayList;
@@ -34,10 +35,16 @@ public class DeckController {
 	@GetMapping("/new")
 	public String newForm(Model model) {
 		long uid = CurrentUser.require().getId();
-		model.addAttribute("library", libraryService.library(uid));
+		var library = libraryService.library(uid);
+		int maxBuildable = maxBuildableDeckSlots(library);
+		boolean noOwned = library.stream().noneMatch(LibraryCardView::isOwned);
+		model.addAttribute("library", library);
 		model.addAttribute("deckName", "");
 		model.addAttribute("selectedIds", List.<Short>of());
 		model.addAttribute("editDeckId", null);
+		model.addAttribute("noOwnedCards", noOwned);
+		model.addAttribute("insufficientCardsForDeck", !noOwned && maxBuildable < 8);
+		model.addAttribute("maxBuildableSlots", maxBuildable);
 		return "deck-edit";
 	}
 
@@ -87,6 +94,14 @@ public class DeckController {
 			ra.addFlashAttribute("error", e.getMessage());
 		}
 		return "redirect:/decks";
+	}
+
+	/** 同一カード最大2枚ルール（deck-edit.js と一致）でデッキに並べられる枚数の上限 */
+	private static int maxBuildableDeckSlots(List<LibraryCardView> library) {
+		return library.stream()
+				.filter(LibraryCardView::isOwned)
+				.mapToInt(v -> Math.min(2, v.getQuantity()))
+				.sum();
 	}
 
 	private static List<Short> parseIds(String cardIds) {

@@ -4,14 +4,18 @@ import com.example.stonechronicle.GameConstants;
 import com.example.stonechronicle.domain.CardDefinition;
 import com.example.stonechronicle.service.CpuBattleService;
 import com.example.stonechronicle.service.DeckService;
+import com.example.stonechronicle.web.dto.CpuBattleCommitRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -62,6 +66,33 @@ public class CpuBattleController {
 		model.addAttribute("humanBattleDef", hb);
 		model.addAttribute("cpuBattleDef", cb);
 		return "cpu-play";
+	}
+
+	@GetMapping(value = "/state", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> state(HttpSession session) {
+		var dto = cpuBattleService.stateDto(session);
+		if (dto == null) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.ok(dto);
+	}
+
+	@PostMapping(value = "/commit", consumes = "application/json", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> commit(@RequestBody CpuBattleCommitRequest req, HttpSession session) {
+		var dto = cpuBattleService.humanCommit(
+				session,
+				req.levelUpRest(),
+				req.levelUpStones(),
+				req.deployInstanceId(),
+				req.payCostStones(),
+				req.payCostCardInstanceIds()
+		);
+		if (dto == null) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.ok(dto);
 	}
 
 	@PostMapping("/act")

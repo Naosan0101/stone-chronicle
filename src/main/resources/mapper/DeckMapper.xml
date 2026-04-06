@@ -10,7 +10,7 @@
 		SELECT id, user_id AS userId, name FROM deck WHERE id = #{id} AND user_id = #{userId}
 	</select>
 
-	<insert id="insert">
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
 		INSERT INTO deck (user_id, name) VALUES (#{userId}, #{name})
 	</insert>
 

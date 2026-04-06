@@ -140,6 +140,169 @@ public class CpuBattleEngine {
 		st.setLastMessage("CPUのターン");
 	}
 
+	/**
+	 * クリックUI向け: 手札の instanceId で配置カード・支払いカードを指定し、配置コストは「カード/ストーン/分割」で支払える。
+	 * levelUpRest は右端からレストへ捨てる枚数、levelUpStones は強化回数（1回=+2、ストーン1消費）。
+	 */
+	public void humanTurnInteractive(CpuBattleState st, int levelUpRest, int levelUpStones,
+			String deployInstanceId, int payCostStones, List<String> payCostCardInstanceIds,
+			Map<Short, CardDefinition> defs) {
+		if (st == null || st.isGameOver() || !st.isHumansTurn()) {
+			return;
+		}
+		if (levelUpRest < 0 || levelUpStones < 0) {
+			st.setLastMessage("指定が不正です");
+			return;
+		}
+		if (levelUpRest > st.getHumanHand().size()) {
+			st.setLastMessage("手札が足りずレベルアップできません");
+			return;
+		}
+		if (levelUpStones > st.getHumanStones()) {
+			st.setLastMessage("ストーンが足りません");
+			return;
+		}
+
+		int stonesAfterLevel = st.getHumanStones() - levelUpStones;
+		if (payCostStones < 0 || payCostStones > stonesAfterLevel) {
+			st.setLastMessage("コスト支払いストーンが不正です");
+			return;
+		}
+
+		// シミュレーション（レベルアップ後の手札）
+		List<BattleCard> simHand = new ArrayList<>(st.getHumanHand());
+		for (int i = 0; i < levelUpRest; i++) {
+			simHand.remove(simHand.size() - 1);
+		}
+
+		int deployBonus = 0;
+		BattleCard simMain = null;
+		CardDefinition mainDef = null;
+		int cost = 0;
+		if (deployInstanceId != null && !deployInstanceId.isBlank()) {
+			for (BattleCard c : simHand) {
+				if (deployInstanceId.equals(c.getInstanceId())) {
+					simMain = c;
+					break;
+				}
+			}
+			if (simMain == null) {
+				st.setLastMessage("配置カードが見つかりません");
+				return;
+			}
+			mainDef = defs.get(simMain.getCardId());
+			if (mainDef == null) {
+				st.setLastMessage("カード定義が見つかりません");
+				return;
+			}
+			int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
+			deployBonus = levelUpRest * perRest + levelUpStones * 2;
+			cost = mainDef.getCost();
+			simHand.remove(simMain);
+
+			// 支払いチェック
+			List<String> payIds = payCostCardInstanceIds != null ? payCostCardInstanceIds : List.of();
+			long distinct = payIds.stream().distinct().count();
+			if (distinct != payIds.size()) {
+				st.setLastMessage("支払いカードが重複しています");
+				return;
+			}
+			if (payIds.size() + payCostStones != cost) {
+				st.setLastMessage("コスト支払いが揃っていません");
+				return;
+			}
+			for (String pid : payIds) {
+				boolean ok = false;
+				for (BattleCard c : simHand) {
+					if (pid != null && pid.equals(c.getInstanceId())) {
+						ok = true;
+						break;
+					}
+				}
+				if (!ok) {
+					st.setLastMessage("支払いカードが手札にありません");
+					return;
+				}
+			}
+
+			// 支払いカードを除外（順序は問わない）
+			for (String pid : payIds) {
+				for (int i = 0; i < simHand.size(); i++) {
+					if (pid.equals(simHand.get(i).getInstanceId())) {
+						simHand.remove(i);
+						break;
+					}
+				}
+			}
+
+			// 強さ条件
+			int eff = mainDef.getBasePower() + deployBonus;
+			if (st.getCpuBattle() != null) {
+				int opp = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
+				if (eff < opp) {
+					st.setLastMessage("配置条件（強さ）を満たせません");
+					return;
+				}
+			}
+		}
+
+		// ここから確定適用
+		st.setHumanStones(st.getHumanStones() - levelUpStones);
+		for (int i = 0; i < levelUpRest; i++) {
+			BattleCard c = st.getHumanHand().remove(st.getHumanHand().size() - 1);
+			st.getHumanRest().add(c);
+		}
+
+		if (simMain != null && mainDef != null) {
+			// 配置カードを実手札から取り出す
+			BattleCard main = removeByInstanceId(st.getHumanHand(), deployInstanceId);
+			if (main == null) {
+				st.setLastMessage("配置カードが見つかりません");
+				return;
+			}
+
+			// コスト支払い（ストーン）
+			st.setHumanStones(st.getHumanStones() - payCostStones);
+
+			// コスト支払い（カード）
+			List<BattleCard> paid = new ArrayList<>();
+			List<String> payIds = payCostCardInstanceIds != null ? payCostCardInstanceIds : List.of();
+			for (String pid : payIds) {
+				BattleCard p = removeByInstanceId(st.getHumanHand(), pid);
+				if (p == null) {
+					st.setLastMessage("支払いカードが見つかりません");
+					return;
+				}
+				paid.add(p);
+			}
+
+			ZoneFighter z = new ZoneFighter();
+			z.setMain(main);
+			z.setCostUnder(paid);
+			z.setTemporaryPowerBonus(deployBonus);
+			st.setHumanBattle(z);
+			applyDeployHuman(st, mainDef, defs);
+			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
+		} else {
+			st.addLog("あなたは配置をスキップした");
+		}
+
+		resolveKnockAndDraw(st, true, defs);
+		resetTurnBuffs(st);
+		st.setHumansTurn(false);
+		st.setLastMessage("CPUのターン");
+	}
+
+	private static BattleCard removeByInstanceId(List<BattleCard> list, String instanceId) {
+		if (instanceId == null) return null;
+		for (int i = 0; i < list.size(); i++) {
+			if (instanceId.equals(list.get(i).getInstanceId())) {
+				return list.remove(i);
+			}
+		}
+		return null;
+	}
+
 	private boolean canDeployWithHand(List<BattleCard> hand, int handIndex, Map<Short, CardDefinition> defs,
 			int deployBonus, CpuBattleState st, boolean human) {
 		BattleCard main = hand.get(handIndex);

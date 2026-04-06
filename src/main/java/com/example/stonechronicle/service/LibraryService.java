@@ -1,5 +1,6 @@
 package com.example.stonechronicle.service;
 
+import com.example.stonechronicle.CanonicalLibraryCardText;
 import com.example.stonechronicle.GameConstants;
 import com.example.stonechronicle.domain.CardDefinition;
 import com.example.stonechronicle.domain.LibraryCardView;
@@ -32,6 +33,9 @@ public class LibraryService {
 			int q = qty.getOrDefault(c.getId(), 0);
 			v.setQuantity(q);
 			v.setOwned(q > 0);
+			v.setCost(c.getCost() != null ? c.getCost() : 0);
+			v.setBasePower(c.getBasePower() != null ? c.getBasePower() : 0);
+			v.setLibraryAbilityText(CanonicalLibraryCardText.abilityTextForId(c.getId()));
 			out.add(v);
 		}
 		out.sort(Comparator.comparing(LibraryCardView::getAttribute).thenComparing(LibraryCardView::getName));

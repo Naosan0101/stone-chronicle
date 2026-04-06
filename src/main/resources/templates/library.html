@@ -6,78 +6,72 @@
 	<title>ライブラリ — ストーンズクロニクル</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
-<body class="page">
+<body class="page page--library">
 <header class="topbar">
 	<h1 class="game-title">ライブラリ</h1>
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
 <section class="panel">
-	<h2>人間</h2>
-	<div class="library-grid">
-		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'HUMAN'}">
-			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
-				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
-				<div class="library-card__mask" th:if="${!c.owned}"></div>
-			</div>
-			<div class="library-card__cap">
-				<span th:text="${c.name}">名前</span>
-				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
-				<span th:if="${!c.owned}" class="muted">未所持</span>
-			</div>
+	<div class="lib-page-toolbar">
+		<p class="lib-page-toolbar__title">全カードを表示しています。検索・絞り込みで表示カードを限定できます。</p>
+		<div class="lib-page-toolbar__controls">
+			<label class="lib-page-field">名前検索
+				<input type="search" id="library-search" class="lib-page-input" autocomplete="off" placeholder="カード名の一部"/>
+			</label>
+			<label class="lib-page-field">種族
+				<select id="library-filter-attr" class="lib-page-select">
+					<option value="" selected>すべて</option>
+					<option value="HUMAN">人間</option>
+					<option value="ELF">エルフ</option>
+					<option value="UNDEAD">アンデッド</option>
+					<option value="DRAGON">ドラゴン</option>
+				</select>
+			</label>
+			<label class="lib-page-field">強さ
+				<select id="library-filter-power" class="lib-page-select">
+					<option value="" selected>すべて</option>
+					<option value="0">0</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+			</label>
 		</div>
+	</div>
+	<p id="library-empty-msg" class="muted" hidden>検索に一致するカードがありません。</p>
+	<div id="library-all-grid" class="library-grid">
+		<th:block th:each="c : ${cards}">
+			<div th:replace="~{fragments/library-card :: cell(c=${c})}"></div>
+		</th:block>
 	</div>
 </section>
 
-<section class="panel">
-	<h2>エルフ</h2>
-	<div class="library-grid">
-		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'ELF'}">
-			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
-				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
-				<div class="library-card__mask" th:if="${!c.owned}"></div>
-			</div>
-			<div class="library-card__cap">
-				<span th:text="${c.name}">名前</span>
-				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
-				<span th:if="${!c.owned}" class="muted">未所持</span>
-			</div>
+<div id="library-detail-modal" class="library-detail-modal" hidden>
+	<div class="library-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="library-detail-name">
+		<button type="button" class="library-detail-modal__close" data-library-detail-close aria-label="閉じる">×</button>
+		<div id="library-detail-art" class="library-detail-modal__art-wrap">
+			<img id="library-detail-img" src="" alt=""/>
+		</div>
+		<div class="library-detail-modal__body">
+			<p class="library-detail-modal__name-label">名前</p>
+			<h2 id="library-detail-name" class="library-detail-modal__title"></h2>
+			<dl class="library-detail-modal__stats">
+				<dt>コスト</dt>
+				<dd id="library-detail-cost"></dd>
+				<dt>強さ</dt>
+				<dd id="library-detail-power"></dd>
+			</dl>
+			<p id="library-detail-meta" class="library-detail-modal__meta"></p>
+			<p class="library-detail-modal__ability-label">能力</p>
+			<p id="library-detail-ability" class="library-detail-modal__detail"></p>
 		</div>
 	</div>
-</section>
+</div>
 
-<section class="panel">
-	<h2>アンデッド</h2>
-	<div class="library-grid">
-		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'UNDEAD'}">
-			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
-				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
-				<div class="library-card__mask" th:if="${!c.owned}"></div>
-			</div>
-			<div class="library-card__cap">
-				<span th:text="${c.name}">名前</span>
-				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
-				<span th:if="${!c.owned}" class="muted">未所持</span>
-			</div>
-		</div>
-	</div>
-</section>
-
-<section class="panel">
-	<h2>ドラゴン</h2>
-	<div class="library-grid">
-		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'DRAGON'}">
-			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
-				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
-				<div class="library-card__mask" th:if="${!c.owned}"></div>
-			</div>
-			<div class="library-card__cap">
-				<span th:text="${c.name}">名前</span>
-				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
-				<span th:if="${!c.owned}" class="muted">未所持</span>
-			</div>
-		</div>
-	</div>
-</section>
+<script th:src="@{/js/library.js}"></script>
 </body>
 </html>

@@ -13,6 +13,18 @@
 </header>
 
 <p class="error" th:if="${error}" th:text="${error}"></p>
+<p class="panel deck-hint error" th:if="${editDeckId == null && noOwnedCards}">
+	まだカードを1枚も持っていません。ホームの
+	<a th:href="@{/pack}">カードパックを引く</a>
+	でカードを入手してから、もう一度この画面を開いてください。
+</p>
+<p class="panel deck-hint error" th:if="${editDeckId == null && insufficientCardsForDeck}">
+	同じカードはデッキに最大2枚までです。いまのコレクションでは
+	<strong th:text="${maxBuildableSlots}">0</strong>
+	枚までしか入れられず、8枚そろいません。
+	<a th:href="@{/pack}">カードパックを引く</a>
+	で枚数を増やしてください。
+</p>
 
 <form id="deck-form" th:action="@{/decks/save}" method="post" class="deck-form">
 	<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -23,15 +35,30 @@
 		<input type="text" name="name" th:value="${deckName}" required/>
 	</label>
 
-	<div class="deck-panels">
-		<section class="panel deck-panel">
+	<div class="deck-panels deck-panels--stack">
+		<section class="panel deck-panel deck-panel--slots">
 			<h2>デッキ（8枚・左クリックで戻す）</h2>
-			<div id="deck-zone" class="card-pool" data-max="8"></div>
+			<div id="deck-zone" class="card-pool card-pool--deck" data-max="8"></div>
 			<p id="deck-count" class="muted">0 / 8</p>
 			<button type="submit" id="complete-btn" class="btn btn--primary" style="display:none">完了</button>
 		</section>
-		<section class="panel deck-panel">
-			<h2>ライブラリ（左クリックでデッキへ）</h2>
+		<section class="panel deck-panel deck-panel--library">
+			<div class="deck-lib-toolbar">
+				<h2 class="deck-lib-toolbar__title">ライブラリ（左クリックでデッキへ）</h2>
+				<div class="deck-lib-toolbar__controls">
+					<label class="deck-lib-field">名前検索
+						<input type="search" id="lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名の一部"/>
+					</label>
+					<label class="deck-lib-field">並び替え
+						<select id="lib-sort" class="deck-lib-select">
+							<option value="attr_power_asc" selected>種族 → 強さ（小→大）</option>
+							<option value="attr_power_desc">種族 → 強さ（大→小）</option>
+							<option value="power_attr_asc">強さ（小→大）→ 種族</option>
+							<option value="power_attr_desc">強さ（大→小）→ 種族</option>
+						</select>
+					</label>
+				</div>
+			</div>
 			<div id="lib-zone" class="card-pool library-pool"></div>
 		</section>
 	</div>
@@ -44,7 +71,9 @@
 	     th:data-id="${c.id}"
 	     th:data-img="${c.imagePath}"
 	     th:data-qty="${c.quantity}"
-	     th:data-name="${c.name}"></div>
+	     th:data-name="${c.name}"
+	     th:data-attribute="${c.attribute}"
+	     th:data-power="${c.basePower}"></div>
 </div>
 <div id="selected-seed" style="display:none">
 	<span th:each="sid : ${selectedIds}" th:text="${sid}"></span>

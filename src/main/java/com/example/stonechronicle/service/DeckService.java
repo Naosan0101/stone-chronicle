@@ -44,6 +44,9 @@ public class DeckService {
 		d.setUserId(userId);
 		d.setName(name.trim().isEmpty() ? "マイデッキ" : name.trim());
 		deckMapper.insert(d);
+		if (d.getId() == null) {
+			throw new IllegalStateException("デッキIDの採番に失敗しました（DB設定を確認してください）");
+		}
 		saveEntries(d.getId(), cardIds);
 		if (countMission) {
 			missionService.onDeckSaved(userId);
