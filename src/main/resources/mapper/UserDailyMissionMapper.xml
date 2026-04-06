@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.stonechronicle.repository.UserDailyMissionMapper">
+
+	<select id="findByUserAndDate" resultType="com.example.stonechronicle.domain.UserDailyMission">
+		SELECT user_id AS userId, mission_date AS missionDate, slot, mission_code AS missionCode,
+		       title, target_count AS targetCount, progress, reward_granted AS rewardGranted
+		FROM user_daily_mission WHERE user_id = #{userId} AND mission_date = #{missionDate} ORDER BY slot
+	</select>
+
+	<delete id="deleteByUserAndDate">
+		DELETE FROM user_daily_mission WHERE user_id = #{userId} AND mission_date = #{missionDate}
+	</delete>
+
+	<insert id="insert">
+		INSERT INTO user_daily_mission (user_id, mission_date, slot, mission_code, title, target_count, progress, reward_granted)
+		VALUES (#{userId}, #{missionDate}, #{slot}, #{missionCode}, #{title}, #{targetCount}, #{progress}, #{rewardGranted})
+	</insert>
+
+	<update id="updateProgress">
+		UPDATE user_daily_mission SET progress = #{progress}
+		WHERE user_id = #{userId} AND mission_date = #{missionDate} AND slot = #{slot}
+	</update>
+
+	<update id="markRewardGranted">
+		UPDATE user_daily_mission SET reward_granted = TRUE
+		WHERE user_id = #{userId} AND mission_date = #{missionDate} AND slot = #{slot}
+	</update>
+</mapper>

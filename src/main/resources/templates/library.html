@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>ライブラリ — ストーンズクロニクル</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body class="page">
+<header class="topbar">
+	<h1 class="game-title">ライブラリ</h1>
+	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+</header>
+
+<section class="panel">
+	<h2>人間</h2>
+	<div class="library-grid">
+		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'HUMAN'}">
+			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
+				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
+				<div class="library-card__mask" th:if="${!c.owned}"></div>
+			</div>
+			<div class="library-card__cap">
+				<span th:text="${c.name}">名前</span>
+				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
+				<span th:if="${!c.owned}" class="muted">未所持</span>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="panel">
+	<h2>エルフ</h2>
+	<div class="library-grid">
+		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'ELF'}">
+			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
+				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
+				<div class="library-card__mask" th:if="${!c.owned}"></div>
+			</div>
+			<div class="library-card__cap">
+				<span th:text="${c.name}">名前</span>
+				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
+				<span th:if="${!c.owned}" class="muted">未所持</span>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="panel">
+	<h2>アンデッド</h2>
+	<div class="library-grid">
+		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'UNDEAD'}">
+			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
+				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
+				<div class="library-card__mask" th:if="${!c.owned}"></div>
+			</div>
+			<div class="library-card__cap">
+				<span th:text="${c.name}">名前</span>
+				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
+				<span th:if="${!c.owned}" class="muted">未所持</span>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="panel">
+	<h2>ドラゴン</h2>
+	<div class="library-grid">
+		<div class="library-card" th:each="c : ${cards}" th:if="${c.attribute == 'DRAGON'}">
+			<div class="library-card__inner" th:classappend="${!c.owned} ? ' library-card--locked'">
+				<img th:src="${c.imagePath}" th:alt="${c.name}"/>
+				<div class="library-card__mask" th:if="${!c.owned}"></div>
+			</div>
+			<div class="library-card__cap">
+				<span th:text="${c.name}">名前</span>
+				<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
+				<span th:if="${!c.owned}" class="muted">未所持</span>
+			</div>
+		</div>
+	</div>
+</section>
+</body>
+</html>

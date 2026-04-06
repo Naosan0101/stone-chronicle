@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>ストーンズクロニクル — 新規登録</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body class="page page--auth">
+<div class="auth-card">
+	<h1 class="game-title">ストーンズクロニクル</h1>
+	<p class="error" th:if="${error}" th:text="${error}"></p>
+	<p class="ok" th:if="${msg}" th:text="${msg}"></p>
+	<form th:action="@{/register}" method="post" class="stack">
+		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+		<label>ユーザーID
+			<input type="text" name="username" required autocomplete="username"/>
+		</label>
+		<label>パスワード（4文字以上）
+			<input type="password" name="password" required autocomplete="new-password"/>
+		</label>
+		<button type="submit" class="btn btn--primary">登録</button>
+	</form>
+	<p><a th:href="@{/login}">ログインへ</a></p>
+</div>
+</body>
+</html>

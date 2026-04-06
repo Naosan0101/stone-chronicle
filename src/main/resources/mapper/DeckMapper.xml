@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.stonechronicle.repository.DeckMapper">
+
+	<select id="findByUserId" resultType="com.example.stonechronicle.domain.Deck">
+		SELECT id, user_id AS userId, name FROM deck WHERE user_id = #{userId} ORDER BY id
+	</select>
+
+	<select id="findByIdAndUserId" resultType="com.example.stonechronicle.domain.Deck">
+		SELECT id, user_id AS userId, name FROM deck WHERE id = #{id} AND user_id = #{userId}
+	</select>
+
+	<insert id="insert">
+		INSERT INTO deck (user_id, name) VALUES (#{userId}, #{name})
+	</insert>
+
+	<update id="updateName">
+		UPDATE deck SET name = #{name} WHERE id = #{id} AND user_id = #{userId}
+	</update>
+
+	<delete id="delete">
+		DELETE FROM deck WHERE id = #{id} AND user_id = #{userId}
+	</delete>
+</mapper>

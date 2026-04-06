@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.stonechronicle.repository.UserCollectionMapper">
+
+	<select id="findByUserId" resultType="com.example.stonechronicle.domain.UserCollectionRow">
+		SELECT user_id AS userId, card_id AS cardId, quantity FROM user_collection WHERE user_id = #{userId}
+	</select>
+
+	<select id="findQuantity" resultType="int">
+		SELECT COALESCE((SELECT quantity FROM user_collection WHERE user_id = #{userId} AND card_id = #{cardId}), 0)
+	</select>
+
+	<insert id="upsertAdd">
+		INSERT INTO user_collection (user_id, card_id, quantity) VALUES (#{userId}, #{cardId}, #{delta})
+		ON CONFLICT (user_id, card_id) DO UPDATE SET quantity = user_collection.quantity + EXCLUDED.quantity
+	</insert>
+</mapper>

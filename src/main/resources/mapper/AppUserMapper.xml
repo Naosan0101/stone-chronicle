@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.stonechronicle.repository.AppUserMapper">
+
+	<select id="findByUsername" resultType="com.example.stonechronicle.domain.AppUser">
+		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt
+		FROM app_user WHERE username = #{username}
+	</select>
+
+	<select id="findById" resultType="com.example.stonechronicle.domain.AppUser">
+		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt
+		FROM app_user WHERE id = #{id}
+	</select>
+
+	<insert id="insert">
+		INSERT INTO app_user (username, password_hash, coins, last_mission_date)
+		VALUES (#{username}, #{passwordHash}, #{coins}, #{lastMissionDate})
+	</insert>
+
+	<update id="updateCoins">
+		UPDATE app_user SET coins = #{coins} WHERE id = #{id}
+	</update>
+
+	<update id="updateLastMissionDate">
+		UPDATE app_user SET last_mission_date = #{lastMissionDate} WHERE id = #{id}
+	</update>
+</mapper>
