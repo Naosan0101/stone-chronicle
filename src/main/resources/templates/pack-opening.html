@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>開封 — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body class="page page--pack-opening">
+<header class="topbar">
+	<h1 class="game-title">開封</h1>
+	<a class="btn btn--ghost" th:href="@{/pack}">パック一覧に戻る</a>
+</header>
+
+<p class="muted">所持ジェム: <strong th:text="${gems}">0</strong></p>
+
+<section class="pack-opening-stage" th:if="${pulledFaces != null}">
+	<div id="pack-opening-row" class="pack-opening-row">
+		<button type="button"
+		        class="pack-opening-card"
+		        th:each="c, iter : ${pulledFaces}"
+		        th:attr="data-pack-index=${iter.index}, data-rarity=${c.rarity}">
+			<div class="pack-opening-card__inner">
+				<img class="pack-opening-card__back" th:src="|${contextPath != null ? contextPath : ''}${cardBackUrl}|"
+				     alt="カードうら"/>
+				<div class="pack-opening-card__face" hidden>
+					<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
+				</div>
+				<div class="pack-opening-card__spark" hidden aria-hidden="true"></div>
+				<div class="pack-opening-card__arrow" th:if="${iter.first}" aria-hidden="true">▲</div>
+			</div>
+		</button>
+	</div>
+</section>
+
+<script th:src="@{/js/card-spark.js}"></script>
+<script th:src="@{/js/pack-opening.js}"></script>
+</body>
+</html>
+

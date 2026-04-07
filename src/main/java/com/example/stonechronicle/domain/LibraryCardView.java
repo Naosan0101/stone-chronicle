@@ -8,6 +8,8 @@ public class LibraryCardView {
 	private Short id;
 	private String name;
 	private String attribute;
+	/** C / R / Ep / Reg */
+	private String rarity = "C";
 	private String imagePath;
 	private int quantity;
 	private boolean owned;
@@ -39,4 +41,6 @@ public class LibraryCardView {
 	private String costFaceCssClass = "card-face__cost";
 	/** カード面強さ欄の class */
 	private String powerFaceCssClass = "card-face__power";
+	/** カード下中央のレア度表記 */
+	private String rarityLabel = "C";
 }

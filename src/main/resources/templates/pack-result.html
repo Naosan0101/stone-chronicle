@@ -3,50 +3,23 @@
 <head>
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<title>ライブラリ — ナインユニバース</title>
+	<title>結果 — ナインユニバース</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
 	<meta name="stone_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>
-<body class="page page--library">
+<body class="page page--pack-result">
 <header class="topbar">
-	<h1 class="game-title">ライブラリ</h1>
-	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+	<h1 class="game-title">結果</h1>
+	<a class="btn btn--ghost" th:href="@{/pack}">パック一覧に戻る</a>
 </header>
 
+<p class="muted">所持ジェム: <strong th:text="${gems}">0</strong></p>
+
 <section class="panel">
-	<div class="lib-page-toolbar">
-		<p class="lib-page-toolbar__title">全カードを表示しています。検索・絞り込みで表示カードを限定できます。</p>
-		<div class="lib-page-toolbar__controls">
-			<label class="lib-page-field">名前検索
-				<input type="search" id="library-search" class="lib-page-input" autocomplete="off" placeholder="カード名の一部"/>
-			</label>
-			<label class="lib-page-field">種族
-				<select id="library-filter-attr" class="lib-page-select">
-					<option value="" selected>すべて</option>
-					<option value="HUMAN">人間</option>
-					<option value="ELF">エルフ</option>
-					<option value="UNDEAD">アンデッド</option>
-					<option value="DRAGON">ドラゴン</option>
-				</select>
-			</label>
-			<label class="lib-page-field">強さ
-				<select id="library-filter-power" class="lib-page-select">
-					<option value="" selected>すべて</option>
-					<option value="0">0</option>
-					<option value="1">1</option>
-					<option value="2">2</option>
-					<option value="3">3</option>
-					<option value="4">4</option>
-					<option value="5">5</option>
-					<option value="6">6</option>
-				</select>
-			</label>
-		</div>
-	</div>
-	<p id="library-empty-msg" class="muted" hidden>検索に一致するカードがありません。</p>
-	<div id="library-all-grid" class="library-grid">
+	<h2>排出カード</h2>
+	<div class="library-grid">
 		<th:block th:each="c : ${cards}">
 			<div th:replace="~{fragments/library-card :: cell(c=${c}, cp=${contextPath})}"></div>
 		</th:block>
@@ -60,7 +33,6 @@
 			<div><dt>種族</dt><dd class="deck-tooltip__attr"></dd></div>
 			<div><dt>コスト</dt><dd class="deck-tooltip__cost"></dd></div>
 			<div><dt>強さ</dt><dd class="deck-tooltip__power"></dd></div>
-			<div><dt>★</dt><dd class="deck-tooltip__rarity"></dd></div>
 		</dl>
 		<p class="deck-tooltip__label">効果</p>
 		<p class="deck-tooltip__ability"></p>
@@ -73,23 +45,23 @@
 		<div id="library-detail-art" class="library-detail-modal__art-wrap">
 			<div class="card-face card-face--layered" id="library-modal-card-face">
 				<div class="card-face__stack" aria-hidden="true">
-					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base" th:src="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
-<!--					↓イラスト追加時にコメントアウト解除-->
-<!--					<img id="lib-modal-layer-portrait" class="card-face__layer-img card-face__layer-img--portrait" alt="" hidden/>-->
+					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base"
+					     th:src="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"
+					     alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
 					<img id="lib-modal-layer-bar" class="card-face__layer-img card-face__layer-img--bar" alt="" hidden/>
-					<img id="lib-modal-layer-frame" class="card-face__layer-img card-face__layer-img--frame" th:src="|${contextPath != null ? contextPath : ''}${cardDataUrl}|" alt="" fetchpriority="high" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img id="lib-modal-layer-frame" class="card-face__layer-img card-face__layer-img--frame"
+					     th:src="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"
+					     alt="" fetchpriority="high" onerror="this.hidden=true; this.removeAttribute('src');"/>
 				</div>
 				<div class="card-face__layer card-face__datum">
 					<span id="lib-modal-cost" class="card-face__cost"></span>
 					<span id="lib-modal-power" class="card-face__power"></span>
 					<span id="lib-modal-name" class="card-face__name"></span>
 					<span id="lib-modal-attr" class="card-face__attr-label"></span>
-					<span id="lib-modal-rarity" class="card-face__rarity"></span>
 				</div>
 				<div class="card-face__layer card-face__narrative">
 					<div id="lib-modal-ability" class="card-face__ability"></div>
 				</div>
-				<div id="lib-modal-spark" class="card-spark" hidden aria-hidden="true"></div>
 			</div>
 		</div>
 	</div>
@@ -99,3 +71,4 @@
 <script th:src="@{/js/library.js}"></script>
 </body>
 </html>
+

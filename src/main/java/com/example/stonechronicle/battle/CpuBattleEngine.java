@@ -543,14 +543,14 @@ public class CpuBattleEngine {
 				}
 			}
 			case "GURIFON" -> {
-				st.setHumanStones(st.getHumanStones() + 2);
-				st.addLog("グリフォン: ストーン+2");
-			}
-			case "KAZE_MAJIN" -> {
 				if (st.getCpuStones() > 0) {
 					st.setCpuStones(st.getCpuStones() - 1);
-					st.addLog("風の魔人: CPUがストーンを1つ捨てた");
+					st.addLog("グリフォン: CPUがストーンを1つ捨てた");
 				}
+			}
+			case "KAZE_MAJIN" -> {
+				st.setHumanStones(st.getHumanStones() + 2);
+				st.addLog("風の魔人: ストーン+2");
 			}
 			default -> {
 			}
@@ -593,11 +593,13 @@ public class CpuBattleEngine {
 					st.setHumanBattle(null);
 				}
 			}
-			case "GURIFON" -> st.setCpuStones(st.getCpuStones() + 2);
-			case "KAZE_MAJIN" -> {
+			case "GURIFON" -> {
 				if (st.getHumanStones() > 0) {
 					st.setHumanStones(st.getHumanStones() - 1);
 				}
+			}
+			case "KAZE_MAJIN" -> {
+				st.setCpuStones(st.getCpuStones() + 2);
 			}
 			default -> {
 			}

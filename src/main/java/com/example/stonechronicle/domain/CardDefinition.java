@@ -9,6 +9,7 @@ public class CardDefinition {
 	private Short cost;
 	private Short basePower;
 	private String attribute;
+	private String rarity;
 	private String imageFile;
 	private String abilityDeployCode;
 	private String abilityPassiveCode;

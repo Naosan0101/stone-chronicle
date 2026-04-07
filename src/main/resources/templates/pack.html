@@ -12,13 +12,13 @@
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
-<p>所持コイン: <strong th:text="${coins}">0</strong></p>
+<p>所持ジェム: <strong th:text="${coins}">0</strong></p>
 <p class="error" th:if="${error}" th:text="${error}"></p>
 
 <div class="pack-stage">
 	<form th:action="@{/pack/open}" method="post" class="inline">
 		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-		<button type="submit" class="btn btn--primary pack-open-btn">パックを開ける（3コイン）</button>
+		<button type="submit" class="btn btn--primary pack-open-btn">パックを開ける（3ジェム）</button>
 	</form>
 	<img class="pack-art" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="カードパック"/>
 </div>

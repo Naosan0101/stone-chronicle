@@ -27,6 +27,7 @@
 	const tooltipCost = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__cost') : null;
 	const tooltipPower = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__power') : null;
 	const tooltipAbility = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__ability') : null;
+	const tooltipRarity = tooltipEl ? tooltipEl.querySelector('.deck-tooltip__rarity') : null;
 
 	const ATTR_JA = {
 		HUMAN: '人間',
@@ -129,6 +130,7 @@
 		if (tooltipAttr) tooltipAttr.textContent = d.attributeJa || ATTR_JA[d.attribute] || d.attribute || '—';
 		if (tooltipCost) tooltipCost.textContent = owned && d.cost != null && d.cost !== '' ? String(d.cost) : '—';
 		if (tooltipPower) tooltipPower.textContent = owned && d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
+		if (tooltipRarity) tooltipRarity.textContent = owned ? (d.rarityLabel || d.rarity || 'C') : '—';
 		if (tooltipAbility) fillDeckTooltipAbility(tooltipAbility, owned ? d.ability : '');
 		tooltipEl.hidden = false;
 		positionHoverTooltip(clientX, clientY);
@@ -181,6 +183,20 @@
 		const d = btn.dataset;
 		const owned = d.owned === 'true';
 		if (!owned) return;
+
+		const rarity = (d.rarity || 'C').trim();
+		const rarityLabel = (d.rarityLabel || rarity || 'C').trim();
+		const modalFaceRoot = document.getElementById('library-modal-card-face');
+		const modalRarity = document.getElementById('lib-modal-rarity');
+		const modalSpark = document.getElementById('lib-modal-spark');
+
+		if (modalFaceRoot) {
+			modalFaceRoot.classList.remove('card-face--rarity-C', 'card-face--rarity-R', 'card-face--rarity-Ep', 'card-face--rarity-Reg');
+			modalFaceRoot.classList.add('card-face--rarity-' + rarity);
+		}
+		if (modalRarity) {
+			modalRarity.textContent = rarityLabel;
+		}
 
 		if (modalCost) {
 			modalCost.textContent = d.cost != null && d.cost !== '' ? String(d.cost) : '';
@@ -276,11 +292,21 @@
 
 		modal.hidden = false;
 		document.body.style.overflow = 'hidden';
+
+		if (modalSpark && typeof fillContinuousCardSpark === 'function') {
+			fillContinuousCardSpark(modalSpark, rarity);
+		}
 	}
 
 	function closeModal() {
 		hideHoverTooltip();
 		if (!modal) return;
+		const modalSpark = document.getElementById('lib-modal-spark');
+		if (modalSpark) {
+			modalSpark.hidden = true;
+			modalSpark.classList.remove('is-on', 'card-spark--continuous', 'spark--R', 'spark--Ep', 'spark--Reg');
+			modalSpark.textContent = '';
+		}
 		modal.hidden = true;
 		document.body.style.overflow = '';
 	}
@@ -307,6 +333,15 @@
 		btn.addEventListener('click', function () {
 			openModal(btn);
 		});
+
+		const rarity = (btn.dataset.rarity || 'C').trim();
+		const owned = btn.dataset.owned === 'true';
+		if (owned && rarity !== 'C' && typeof fillContinuousCardSpark === 'function') {
+			const spark = card.querySelector('.card-face .card-spark');
+			if (spark) {
+				fillContinuousCardSpark(spark, rarity);
+			}
+		}
 	});
 
 	document.addEventListener('scroll', hideHoverTooltip, true);

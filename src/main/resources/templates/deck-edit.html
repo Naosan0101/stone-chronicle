@@ -18,14 +18,14 @@
 <p class="error" th:if="${error}" th:text="${error}"></p>
 <p class="panel deck-hint error" th:if="${editDeckId == null && noOwnedCards}">
 	まだカードを1枚も持っていません。ホームの
-	<a th:href="@{/pack}">カードパックを引く</a>
+	<a th:href="@{/pack}">カードパックを購入</a>
 	でカードを入手してから、もう一度この画面を開いてください。
 </p>
 <p class="panel deck-hint error" th:if="${editDeckId == null && insufficientCardsForDeck}">
 	同じカードはデッキに最大2枚までです。いまのコレクションでは
 	<strong th:text="${maxBuildableSlots}">0</strong>
 	枚までしか入れられず、8枚そろいません。
-	<a th:href="@{/pack}">カードパックを引く</a>
+	<a th:href="@{/pack}">カードパックを購入</a>
 	で枚数を増やしてください。
 </p>
 

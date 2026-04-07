@@ -10,7 +10,7 @@
 <header class="topbar">
 	<h1 class="game-title">ナインユニバース</h1>
 	<div class="topbar__meta">
-		<span>コイン: <strong th:text="${user.coins}">0</strong></span>
+		<span>ジェム: <strong th:text="${user.coins}">0</strong></span>
 		<form th:action="@{/logout}" method="post" class="inline">
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 			<button type="submit" class="btn btn--ghost">ゲームをやめる（ログアウト）</button>
@@ -20,8 +20,8 @@
 
 <main class="home-grid">
 	<a class="tile" th:href="@{/pack}">
-		<span class="tile__label">カードパックを引く</span>
-		<span class="tile__hint">3コイン / 4枚</span>
+		<span class="tile__label">カードパックを購入</span>
+		<span class="tile__hint">3〜5ジェム / 4枚</span>
 	</a>
 	<a class="tile" th:href="@{/battle/cpu}">
 		<span class="tile__label">CPUとバトル</span>

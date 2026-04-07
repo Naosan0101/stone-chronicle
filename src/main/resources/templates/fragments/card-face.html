@@ -5,7 +5,8 @@
   画像のみ: ①カード基盤 → ②種族バー → ③カード基礎データ（最前面）→ HTML テキスト
   イラスト層は後日。素材: static/images/cards/*.PNG
 -->
-<div th:fragment="layers(c, cp)" class="card-face card-face--layered" th:classappend="|card-face--attr-${c.attribute}|">
+<div th:fragment="layers(c, cp)" class="card-face card-face--layered"
+     th:classappend="|card-face--attr-${c.attribute} card-face--rarity-${c.rarity}|">
 	<div class="card-face__stack" aria-hidden="true">
 		<img class="card-face__layer-img card-face__layer-img--base"
 		     th:if="${c.layerBasePath != null && !c.layerBasePath.isBlank()}"
@@ -39,6 +40,7 @@
 				<span class="card-face__attr-line" th:text="${line}">種族</span>
 			</th:block>
 		</span>
+		<span class="card-face__rarity" th:text="${c.rarityLabel != null ? c.rarityLabel : 'C'}">C</span>
 	</div>
 	<div class="card-face__layer card-face__narrative">
 		<div class="card-face__ability">
@@ -51,6 +53,7 @@
 			</th:block>
 		</div>
 	</div>
+	<div class="card-spark" aria-hidden="true"></div>
 </div>
 </body>
 </html>

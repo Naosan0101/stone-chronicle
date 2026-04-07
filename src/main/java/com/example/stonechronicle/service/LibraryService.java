@@ -69,6 +69,9 @@ public class LibraryService {
 		v.setId(c.getId());
 		v.setName(c.getName());
 		v.setAttribute(c.getAttribute());
+		String rarity = c.getRarity();
+		v.setRarity(rarity != null && !rarity.isBlank() ? rarity : "C");
+		v.setRarityLabel(v.getRarity());
 		String portrait = GameConstants.cardPortraitPath(c.getImageFile());
 		v.setImagePath(portrait);
 		v.setLayerPortraitPath(portrait);
