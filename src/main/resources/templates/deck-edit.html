@@ -73,6 +73,15 @@
 							<option value="6">6</option>
 						</select>
 					</label>
+					<label class="deck-lib-field">★
+						<select id="lib-filter-rarity" class="deck-lib-select">
+							<option value="" selected>すべて</option>
+							<option value="Reg">レジェンダリー</option>
+							<option value="Ep">エピック</option>
+							<option value="R">レア</option>
+							<option value="C">コモン</option>
+						</select>
+					</label>
 					<label class="deck-lib-field">並び替え（強さ）
 						<select id="lib-sort" class="deck-lib-select">
 							<option value="power_asc" selected>強さ 小→大</option>
@@ -96,6 +105,8 @@
 	     th:data-layer-portrait="${c.layerPortraitPath}"
 	     th:data-layer-bar="${c.barImagePath}"
 	     th:data-layer-frame="${c.layerFramePath}"
+	     th:data-rarity="${c.rarity}"
+	     th:data-rarity-label="${c.rarityLabel}"
 	     th:data-qty="${c.quantity}"
 	     th:data-name="${c.name}"
 	     th:data-attribute="${c.attribute}"
@@ -129,6 +140,7 @@
 	</div>
 </div>
 
+<script th:src="@{/js/card-spark.js}"></script>
 <script th:src="@{/js/deck-edit.js}"></script>
 </body>
 </html>

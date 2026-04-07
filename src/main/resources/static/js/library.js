@@ -365,9 +365,10 @@
 	const searchInput = document.getElementById('library-search');
 	const filterAttr = document.getElementById('library-filter-attr');
 	const filterPower = document.getElementById('library-filter-power');
+	const filterRarity = document.getElementById('library-filter-rarity');
 	const emptyMsg = document.getElementById('library-empty-msg');
 
-	if (grid && searchInput && filterAttr && filterPower) {
+	if (grid && searchInput && filterAttr && filterPower && filterRarity) {
 		const ATTR_ORDER = { HUMAN: 0, ELF: 1, UNDEAD: 2, DRAGON: 3 };
 		const cards = Array.from(grid.children).filter(function (el) {
 			return el.classList && el.classList.contains('library-card');
@@ -404,6 +405,7 @@
 			const q = searchInput.value.trim();
 			const attrSel = filterAttr.value;
 			const powerSel = filterPower.value;
+			const raritySel = filterRarity.value;
 			let items = cards.map(function (card) {
 				const btn = card.querySelector('.library-card__open');
 				const ds = btn ? btn.dataset : {};
@@ -412,13 +414,15 @@
 					card: card,
 					name: ds.name || '',
 					attribute: ds.attribute || '',
-					power: isNaN(p) ? 0 : p
+					power: isNaN(p) ? 0 : p,
+					rarity: (ds.rarity || 'C').trim()
 				};
 			});
 			items = items.filter(function (it) {
 				if (q && it.name.indexOf(q) === -1) return false;
 				if (attrSel && !matchesTribeFilter(it.attribute, attrSel)) return false;
 				if (powerSel && String(it.power) !== String(powerSel)) return false;
+				if (raritySel && it.rarity !== raritySel) return false;
 				return true;
 			});
 			items.sort(function (a, b) {
@@ -445,6 +449,7 @@
 		searchInput.addEventListener('input', applyBrowser);
 		filterAttr.addEventListener('change', applyBrowser);
 		filterPower.addEventListener('change', applyBrowser);
+		filterRarity.addEventListener('change', applyBrowser);
 		applyBrowser();
 	}
 })();

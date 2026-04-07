@@ -18,7 +18,7 @@
 <div class="pack-stage">
 	<form th:action="@{/pack/open}" method="post" class="inline">
 		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-		<button type="submit" class="btn btn--primary pack-open-btn">パックを開ける（3ジェム）</button>
+		<button type="submit" class="btn btn--primary pack-open-btn">パックを開ける（0ジェム）</button>
 	</form>
 	<img class="pack-art" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="カードパック"/>
 </div>

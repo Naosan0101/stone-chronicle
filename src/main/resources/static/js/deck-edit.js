@@ -21,6 +21,7 @@
 	const libSort = document.getElementById('lib-sort');
 	const libFilterAttr = document.getElementById('lib-filter-attr');
 	const libFilterPower = document.getElementById('lib-filter-power');
+	const libFilterRarity = document.getElementById('lib-filter-rarity');
 	const tooltipEl = document.getElementById('deck-tooltip');
 	const tooltipName = tooltipEl.querySelector('.deck-tooltip__name');
 	const tooltipAttr = tooltipEl.querySelector('.deck-tooltip__attr');
@@ -29,6 +30,24 @@
 	const tooltipAbility = tooltipEl.querySelector('.deck-tooltip__ability');
 
 	const ATTR_LABEL = { HUMAN: '人間', ELF: 'エルフ', UNDEAD: 'アンデッド', DRAGON: 'ドラゴン' };
+
+	function applyContinuousSparkToFaceRoot(faceRoot, rarityCode) {
+		if (!faceRoot || typeof fillContinuousCardSpark !== 'function') return;
+		const r = (rarityCode || 'C').trim();
+		if (r === 'C') return;
+		const spark = faceRoot.querySelector('.card-spark');
+		if (spark) {
+			fillContinuousCardSpark(spark, r);
+		}
+	}
+
+	function wireSparkOnMiniCardHost(hostEl, c) {
+		if (!hostEl || !c) return;
+		const face = hostEl.querySelector('.card-face--layered');
+		if (face) {
+			applyContinuousSparkToFaceRoot(face, c.rarity);
+		}
+	}
 
 	function matchesTribeFilter(cardAttr, filterVal) {
 		if (!filterVal) return true;
@@ -58,6 +77,8 @@
 			layerPortrait: el.dataset.layerPortrait || '',
 			layerBar: el.dataset.layerBar || '',
 			layerFrame: el.dataset.layerFrame || '',
+			rarity: (el.dataset.rarity || 'C').trim(),
+			rarityLabel: (el.dataset.rarityLabel || '').trim(),
 			qty: parseInt(el.dataset.qty, 10) || 0,
 			name: el.dataset.name || '',
 			attribute: el.dataset.attribute || '',
@@ -105,10 +126,12 @@
 		const q = libSearch ? libSearch.value.trim() : '';
 		const attrF = libFilterAttr ? libFilterAttr.value : '';
 		const powF = libFilterPower ? libFilterPower.value : '';
+		const rarF = libFilterRarity ? libFilterRarity.value : '';
 		let list = seeds.filter(function (c) {
 			if (q && c.name.indexOf(q) === -1) return false;
 			if (attrF && !matchesTribeFilter(c.attribute, attrF)) return false;
 			if (powF !== '' && c.power !== parseInt(powF, 10)) return false;
+			if (rarF && c.rarity !== rarF) return false;
 			return true;
 		});
 		const mode = libSort ? libSort.value : 'power_asc';
@@ -139,6 +162,10 @@
 		if (c.attribute) {
 			face.classList.add('card-face--attr-' + c.attribute);
 		}
+		const rar = (c.rarity || 'C').trim();
+		if (rar === 'R' || rar === 'Ep' || rar === 'Reg' || rar === 'C') {
+			face.classList.add('card-face--rarity-' + rar);
+		}
 		const stack = document.createElement('div');
 		stack.className = 'card-face__stack';
 		stack.setAttribute('aria-hidden', 'true');
@@ -178,6 +205,11 @@
 		});
 		datum.appendChild(attrWrap);
 		face.appendChild(datum);
+
+		const spark = document.createElement('div');
+		spark.className = 'card-spark';
+		spark.setAttribute('aria-hidden', 'true');
+		face.appendChild(spark);
 
 		return face;
 	}
@@ -188,6 +220,10 @@
 		if (c.attribute) {
 			face.classList.add('card-face--attr-' + c.attribute);
 		}
+		const rarP = (c.rarity || 'C').trim();
+		if (rarP === 'R' || rarP === 'Ep' || rarP === 'Reg' || rarP === 'C') {
+			face.classList.add('card-face--rarity-' + rarP);
+		}
 		const stack = document.createElement('div');
 		stack.className = 'card-face__stack';
 		stack.setAttribute('aria-hidden', 'true');
@@ -227,6 +263,11 @@
 		});
 		datum.appendChild(attrWrap);
 		face.appendChild(datum);
+
+		const sparkP = document.createElement('div');
+		sparkP.className = 'card-spark';
+		sparkP.setAttribute('aria-hidden', 'true');
+		face.appendChild(sparkP);
 
 		return face;
 	}
@@ -272,6 +313,7 @@
 				}
 				if (previewFace) {
 					previewFace.appendChild(buildPreviewLayered(c));
+					applyContinuousSparkToFaceRoot(previewFace.querySelector('.card-face--layered'), c.rarity);
 				}
 			} else {
 				const bigArt = c.img;
@@ -378,6 +420,7 @@
 			el.dataset.id = String(c.id);
 			el.setAttribute('aria-label', c.name + '（強さ' + c.power + '・×' + c.qty + '）をデッキへ');
 			appendLibCardFace(el, c);
+			wireSparkOnMiniCardHost(el, c);
 			bindPreview(el, c);
 			bindCardTooltip(el, c);
 			el.addEventListener('click', function () {
@@ -389,6 +432,7 @@
 				copy.setAttribute('tabindex', '0');
 				copy.setAttribute('aria-label', c.name + 'をデッキから戻す');
 				appendCardImage(copy, c);
+				wireSparkOnMiniCardHost(copy, c);
 				bindPreview(copy, c);
 				bindCardTooltip(copy, c);
 				copy.addEventListener('click', function () {
@@ -413,7 +457,8 @@
 			const hasSearch = libSearch && libSearch.value.trim();
 			const hasAttr = libFilterAttr && libFilterAttr.value;
 			const hasPow = libFilterPower && libFilterPower.value !== '';
-			if (hasSearch || hasAttr || hasPow) {
+			const hasRar = libFilterRarity && libFilterRarity.value;
+			if (hasSearch || hasAttr || hasPow || hasRar) {
 				const p = document.createElement('p');
 				p.className = 'muted deck-lib-empty-msg';
 				p.textContent = '表示条件に一致するカードがありません。';
@@ -443,6 +488,7 @@
 			copy.setAttribute('tabindex', '0');
 			copy.setAttribute('aria-label', c.name + 'をデッキから戻す');
 			appendCardImage(copy, c);
+			wireSparkOnMiniCardHost(copy, c);
 			bindPreview(copy, c);
 			bindCardTooltip(copy, c);
 			copy.addEventListener('click', function () {
@@ -475,6 +521,9 @@
 	}
 	if (libFilterPower) {
 		libFilterPower.addEventListener('change', onFilterChange);
+	}
+	if (libFilterRarity) {
+		libFilterRarity.addEventListener('change', onFilterChange);
 	}
 
 	document.addEventListener('scroll', hideTooltip, true);

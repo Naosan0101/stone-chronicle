@@ -41,6 +41,12 @@
 			fillContinuousCardSpark(spark, rarity);
 		}
 
+		// ライブラリ同様、カード面内のキラ（R/Ep/Reg は常時）
+		const faceSpark = face ? face.querySelector('.card-face .card-spark') : null;
+		if (faceSpark && typeof fillContinuousCardSpark === 'function') {
+			fillContinuousCardSpark(faceSpark, rarity);
+		}
+
 		if (rarity === 'Reg') {
 			shake();
 		}
