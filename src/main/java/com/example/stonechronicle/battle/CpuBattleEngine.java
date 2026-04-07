@@ -1,5 +1,6 @@
 package com.example.stonechronicle.battle;
 
+import com.example.stonechronicle.card.CardAttributes;
 import com.example.stonechronicle.domain.CardDefinition;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -436,7 +437,7 @@ public class CpuBattleEngine {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
 			if (opp != null) {
 				CardDefinition od = defs.get(opp.getMain().getCardId());
-				if (!"DRAGON".equals(od.getAttribute())) {
+				if (!CardAttributes.hasAttribute(od, "DRAGON")) {
 					p += 1;
 				}
 			}
@@ -455,14 +456,14 @@ public class CpuBattleEngine {
 
 		if (id == GAIKOTSU_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-			if (opp != null && "ELF".equals(defs.get(opp.getMain().getCardId()).getAttribute())) {
+			if (opp != null && CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "ELF")) {
 				p += 2;
 			}
 		}
 
 		if (id == SHIREI_ID) {
 			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
-			if (opp != null && !"HUMAN".equals(defs.get(opp.getMain().getCardId()).getAttribute())) {
+			if (opp != null && !CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "HUMAN")) {
 				p += 1;
 			}
 		}
@@ -471,7 +472,7 @@ public class CpuBattleEngine {
 			List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
 			int undead = 0;
 			for (BattleCard c : rest) {
-				if ("UNDEAD".equals(defs.get(c.getCardId()).getAttribute())) {
+				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "UNDEAD")) {
 					undead++;
 				}
 			}
@@ -487,7 +488,7 @@ public class CpuBattleEngine {
 
 	private boolean restContainsAttribute(List<BattleCard> rest, Map<Short, CardDefinition> defs, String attr) {
 		for (BattleCard c : rest) {
-			if (attr.equals(defs.get(c.getCardId()).getAttribute())) {
+			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), attr)) {
 				return true;
 			}
 		}
@@ -535,7 +536,7 @@ public class CpuBattleEngine {
 			}
 			case "DAKU_DORAGON" -> {
 				if (st.getCpuBattle() != null
-						&& "DRAGON".equals(defs.get(st.getCpuBattle().getMain().getCardId()).getAttribute())) {
+						&& CardAttributes.hasAttribute(defs.get(st.getCpuBattle().getMain().getCardId()), "DRAGON")) {
 					moveZoneToRest(st.getCpuBattle(), st.getCpuRest());
 					st.setCpuBattle(null);
 					st.addLog("ダークドラゴン: 相手ドラゴンをレストへ");

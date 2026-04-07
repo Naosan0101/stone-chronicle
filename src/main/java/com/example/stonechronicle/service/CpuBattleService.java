@@ -1,10 +1,14 @@
 package com.example.stonechronicle.service;
 
+import com.example.stonechronicle.GameConstants;
 import com.example.stonechronicle.battle.CpuBattleEngine;
 import com.example.stonechronicle.battle.CpuBattleState;
 import com.example.stonechronicle.battle.ZoneFighter;
 import com.example.stonechronicle.domain.CardDefinition;
 import com.example.stonechronicle.web.dto.BattleCardDto;
+import com.example.stonechronicle.card.CardAttributeLabels;
+import com.example.stonechronicle.card.CardFaceAbilityFormatter;
+import com.example.stonechronicle.web.dto.AbilityBlockDto;
 import com.example.stonechronicle.web.dto.CardDefDto;
 import com.example.stonechronicle.web.dto.CpuBattleStateDto;
 import com.example.stonechronicle.web.dto.ZoneFighterDto;
@@ -102,7 +106,16 @@ public class CpuBattleService {
 								(short) (d.getBasePower() != null ? d.getBasePower() : 0),
 								d.getAttribute(),
 								d.getImageFile(),
-								d.getAbilityDeployCode()
+								d.getAbilityDeployCode(),
+								CardAttributeLabels.japaneseName(d.getAttribute()),
+								CardAttributeLabels.japaneseNameLines(d.getAttribute()),
+								GameConstants.CARD_LAYER_BASE,
+								GameConstants.cardLayerBarPath(d.getAttribute()),
+								GameConstants.CARD_LAYER_DATA,
+								GameConstants.cardPortraitPath(d.getImageFile()),
+								CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
+										.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
+										.toList()
 						)
 				));
 

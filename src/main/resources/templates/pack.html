@@ -20,24 +20,33 @@
 		<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 		<button type="submit" class="btn btn--primary pack-open-btn">パックを開ける（3コイン）</button>
 	</form>
-	<img class="pack-art" th:src="${packImage}" alt="カードパック"/>
+	<img class="pack-art" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="カードパック"/>
 </div>
 
-<div class="pull-grid" th:if="${pulled != null}">
+<div class="pull-grid" th:if="${pulledFaces != null}">
 	<h2>獲得カード</h2>
 	<div class="card-strip">
-		<button type="button" class="card-thumb" th:each="c : ${pulled}"
-		        th:onclick="|document.getElementById('big').src=this.querySelector('img').src|">
-			<img th:src="@{/images/cards/{fn}(fn=${c.imageFile})}" th:alt="${c.name}"/>
+		<button type="button" class="card-thumb" th:each="c, iter : ${pulledFaces}"
+		        th:data-pack-index="${iter.index}">
+			<div class="card-thumb__face" th:insert="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
 		</button>
 	</div>
-	<img id="big" class="card-big" alt="" th:if="${!pulled.isEmpty()}"
-	     th:src="@{/images/cards/{fn}(fn=${pulled[0].imageFile})}"/>
+	<div id="pack-big-stage" class="pack-big-stage" th:if="${!pulledFaces.isEmpty()}">
+		<div class="pack-big-slide" th:each="c, iter : ${pulledFaces}" th:classappend="${iter.first} ? ' is-active' : ''">
+			<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
+		</div>
+	</div>
 </div>
 
-<script th:inline="javascript">
-	document.querySelectorAll('.card-thumb img').forEach(function (img) {
-		img.addEventListener('click', function (e) { e.preventDefault(); });
+<script>
+	document.querySelectorAll('.card-thumb[data-pack-index]').forEach(function (btn) {
+		btn.addEventListener('click', function () {
+			var i = parseInt(btn.getAttribute('data-pack-index'), 10);
+			document.querySelectorAll('.pack-big-slide').forEach(function (sl, j) {
+				if (j === i) sl.classList.add('is-active');
+				else sl.classList.remove('is-active');
+			});
+		});
 	});
 </script>
 </body>

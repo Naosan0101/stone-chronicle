@@ -1,5 +1,6 @@
 package com.example.stonechronicle.web;
 
+import com.example.stonechronicle.GameConstants;
 import com.example.stonechronicle.domain.LibraryCardView;
 import com.example.stonechronicle.service.DeckService;
 import com.example.stonechronicle.service.LibraryService;
@@ -45,6 +46,7 @@ public class DeckController {
 		model.addAttribute("noOwnedCards", noOwned);
 		model.addAttribute("insufficientCardsForDeck", !noOwned && maxBuildable < 8);
 		model.addAttribute("maxBuildableSlots", maxBuildable);
+		addDeckEditStaticUrls(model);
 		return "deck-edit";
 	}
 
@@ -56,7 +58,13 @@ public class DeckController {
 		model.addAttribute("deckName", deck.getName());
 		model.addAttribute("selectedIds", deckService.cardIdsForDeck(id));
 		model.addAttribute("editDeckId", id);
+		addDeckEditStaticUrls(model);
 		return "deck-edit";
+	}
+
+	private static void addDeckEditStaticUrls(Model model) {
+		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
+		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
 	}
 
 	@PostMapping("/save")

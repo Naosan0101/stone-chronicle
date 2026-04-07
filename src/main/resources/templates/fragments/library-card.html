@@ -1,23 +1,30 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-<div th:fragment="cell(c)" class="library-card" th:classappend="${!c.owned} ? 'library-card--locked'">
+<div th:fragment="cell(c, cp)" class="library-card" th:classappend="${!c.owned} ? 'library-card--locked'">
 	<button type="button" class="library-card__open"
 			th:disabled="${!c.owned}"
 			th:data-name="${c.name}"
-			th:data-image="${c.imagePath}"
 			th:data-attribute="${c.attribute}"
+			th:data-attribute-ja="${c.attributeLabelJa}"
+			th:attr="data-attr-pipe=${c.attributeLabelPipe}"
 			th:data-cost="${c.cost}"
 			th:data-base-power="${c.basePower}"
 			th:data-owned="${c.owned}"
 			th:data-quantity="${c.quantity}"
-			th:data-ability="${c.libraryAbilityText != null ? c.libraryAbilityText : ''}">
+			th:data-ability="${c.libraryAbilityText != null ? c.libraryAbilityText : ''}"
+			th:data-canonical-line="${c.canonicalAbilityLine != null ? c.canonicalAbilityLine : ''}"
+			th:data-deploy-help="${c.deployHelp != null ? c.deployHelp : ''}"
+			th:data-passive-help="${c.passiveHelp != null ? c.passiveHelp : ''}"
+			th:data-layer-base="${c.layerBasePath}"
+			th:data-layer-portrait="${c.layerPortraitPath}"
+			th:data-layer-frame="${c.layerFramePath}"
+			th:data-layer-bar="${c.barImagePath}">
 		<div class="library-card__inner">
-			<img th:src="${c.imagePath}" th:alt="${c.owned ? c.name : ''}"/>
+			<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${cp})}"></div>
 			<div class="library-card__mask" th:if="${!c.owned}"></div>
 		</div>
 		<div class="library-card__cap">
-			<span th:text="${c.name}">名前</span>
 			<span th:if="${c.owned}" th:text="|×${c.quantity}|">×0</span>
 			<span th:if="${!c.owned}" class="muted">未所持</span>
 		</div>

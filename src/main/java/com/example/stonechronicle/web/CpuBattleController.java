@@ -54,7 +54,9 @@ public class CpuBattleController {
 		var defs = cpuBattleService.defs();
 		model.addAttribute("state", st);
 		model.addAttribute("defs", defs);
-		model.addAttribute("cardBack", GameConstants.CARD_IMAGE_PREFIX + GameConstants.CARD_BACK_FILE);
+		model.addAttribute("cardBack", GameConstants.cardBackUrl());
+		model.addAttribute("cardPlateUrl", GameConstants.CARD_LAYER_BASE);
+		model.addAttribute("cardDataUrl", GameConstants.CARD_LAYER_DATA);
 		CardDefinition hb = null;
 		CardDefinition cb = null;
 		if (st.getHumanBattle() != null && st.getHumanBattle().getMain() != null) {

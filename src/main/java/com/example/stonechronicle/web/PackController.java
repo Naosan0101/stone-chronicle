@@ -2,7 +2,10 @@ package com.example.stonechronicle.web;
 
 import com.example.stonechronicle.GameConstants;
 import com.example.stonechronicle.repository.AppUserMapper;
+import com.example.stonechronicle.service.LibraryService;
 import com.example.stonechronicle.service.PackService;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,13 +21,28 @@ public class PackController {
 
 	private final PackService packService;
 	private final AppUserMapper appUserMapper;
+	private final LibraryService libraryService;
 
 	@GetMapping
 	public String page(Model model) {
 		long uid = CurrentUser.require().getId();
 		var fresh = appUserMapper.findById(uid);
-		model.addAttribute("packImage", GameConstants.CARD_IMAGE_PREFIX + GameConstants.CARD_PACK_FILE);
+		model.addAttribute("packImage", GameConstants.packImageUrl());
 		model.addAttribute("coins", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
+		Object pulledIds = model.asMap().get("pulledCardIds");
+		if (pulledIds instanceof List<?> raw && !raw.isEmpty()) {
+			List<Short> ids = new ArrayList<>();
+			for (Object o : raw) {
+				if (o instanceof Short s) {
+					ids.add(s);
+				} else if (o instanceof Number n) {
+					ids.add(n.shortValue());
+				}
+			}
+			if (!ids.isEmpty()) {
+				model.addAttribute("pulledFaces", libraryService.displayFacesForCardIds(ids));
+			}
+		}
 		return "pack";
 	}
 
@@ -33,7 +51,8 @@ public class PackController {
 		try {
 			long uid = CurrentUser.require().getId();
 			var pulled = packService.openPack(uid);
-			ra.addFlashAttribute("pulled", pulled);
+			List<Short> ids = pulled.stream().map(c -> c.getId()).toList();
+			ra.addFlashAttribute("pulledCardIds", ids);
 		} catch (IllegalArgumentException e) {
 			ra.addFlashAttribute("error", e.getMessage());
 		}

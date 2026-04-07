@@ -2,6 +2,7 @@ package com.example.stonechronicle.web;
 
 import com.example.stonechronicle.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,8 +16,12 @@ public class AuthController {
 
 	private final RegistrationService registrationService;
 
+	@Value("${app.inactive-user.retention-days:7}")
+	private int inactiveUserRetentionDays;
+
 	@GetMapping("/login")
-	public String login() {
+	public String login(Model model) {
+		model.addAttribute("inactiveUserRetentionDays", inactiveUserRetentionDays);
 		return "login";
 	}
 

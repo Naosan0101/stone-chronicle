@@ -12,4 +12,6 @@ public class AppUser {
 	private Integer coins;
 	private LocalDate lastMissionDate;
 	private LocalDateTime createdAt;
+	/** 最終アクセス（未アカウント削除の判定用） */
+	private LocalDateTime lastAccessAt;
 }

@@ -5,6 +5,9 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>ライブラリ — ストーンズクロニクル</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<meta name="stone_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
+	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
+	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>
 <body class="page page--library">
 <header class="topbar">
@@ -45,29 +48,45 @@
 	<p id="library-empty-msg" class="muted" hidden>検索に一致するカードがありません。</p>
 	<div id="library-all-grid" class="library-grid">
 		<th:block th:each="c : ${cards}">
-			<div th:replace="~{fragments/library-card :: cell(c=${c})}"></div>
+			<div th:replace="~{fragments/library-card :: cell(c=${c}, cp=${contextPath})}"></div>
 		</th:block>
 	</div>
 </section>
 
+<div id="library-tooltip" class="deck-tooltip library-page-tooltip" hidden role="tooltip">
+	<div class="deck-tooltip__inner">
+		<p class="deck-tooltip__name"></p>
+		<dl class="deck-tooltip__stats">
+			<div><dt>種族</dt><dd class="deck-tooltip__attr"></dd></div>
+			<div><dt>コスト</dt><dd class="deck-tooltip__cost"></dd></div>
+			<div><dt>強さ</dt><dd class="deck-tooltip__power"></dd></div>
+		</dl>
+		<p class="deck-tooltip__label">効果</p>
+		<p class="deck-tooltip__ability"></p>
+	</div>
+</div>
+
 <div id="library-detail-modal" class="library-detail-modal" hidden>
-	<div class="library-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="library-detail-name">
+	<div class="library-detail-modal__panel" role="dialog" aria-modal="true" aria-label="カード詳細">
 		<button type="button" class="library-detail-modal__close" data-library-detail-close aria-label="閉じる">×</button>
 		<div id="library-detail-art" class="library-detail-modal__art-wrap">
-			<img id="library-detail-img" src="" alt=""/>
-		</div>
-		<div class="library-detail-modal__body">
-			<p class="library-detail-modal__name-label">名前</p>
-			<h2 id="library-detail-name" class="library-detail-modal__title"></h2>
-			<dl class="library-detail-modal__stats">
-				<dt>コスト</dt>
-				<dd id="library-detail-cost"></dd>
-				<dt>強さ</dt>
-				<dd id="library-detail-power"></dd>
-			</dl>
-			<p id="library-detail-meta" class="library-detail-modal__meta"></p>
-			<p class="library-detail-modal__ability-label">能力</p>
-			<p id="library-detail-ability" class="library-detail-modal__detail"></p>
+			<div class="card-face card-face--layered" id="library-modal-card-face">
+				<div class="card-face__stack" aria-hidden="true">
+					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base" th:src="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img id="lib-modal-layer-portrait" class="card-face__layer-img card-face__layer-img--portrait" alt="" hidden/>
+					<img id="lib-modal-layer-bar" class="card-face__layer-img card-face__layer-img--bar" alt="" hidden/>
+					<img id="lib-modal-layer-frame" class="card-face__layer-img card-face__layer-img--frame" th:src="|${contextPath != null ? contextPath : ''}${cardDataUrl}|" alt="" fetchpriority="high" onerror="this.hidden=true; this.removeAttribute('src');"/>
+				</div>
+				<div class="card-face__layer card-face__datum">
+					<span id="lib-modal-cost" class="card-face__cost"></span>
+					<span id="lib-modal-power" class="card-face__power"></span>
+					<span id="lib-modal-name" class="card-face__name"></span>
+					<span id="lib-modal-attr" class="card-face__attr-label"></span>
+				</div>
+				<div class="card-face__layer card-face__narrative">
+					<div id="lib-modal-ability" class="card-face__ability"></div>
+				</div>
+			</div>
 		</div>
 	</div>
 </div>

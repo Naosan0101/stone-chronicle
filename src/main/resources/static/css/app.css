@@ -133,6 +133,12 @@ body {
 	grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
 	gap: 0.75rem;
 }
+.page--library .card-face {
+	/* ライブラリ（一覧/詳細）だけ、数字位置を微調整 */
+	--cf-cost-left: 5.6%;
+	--cf-cost-top: 3.8%;
+	--cf-power-top: 3.9%;
+}
 .lib-page-toolbar {
 	display: flex;
 	flex-wrap: wrap;
@@ -258,18 +264,19 @@ body {
 }
 .library-detail-modal__panel {
 	position: relative;
-	display: flex;
+	display: inline-flex;
 	flex-wrap: wrap;
 	align-items: flex-start;
 	gap: 1.75rem;
 	max-width: min(1040px, 100%);
-	width: 100%;
+	width: auto;
 	max-height: min(94vh, 960px);
 	overflow-y: auto;
 	background: var(--panel);
 	border-radius: 16px;
 	border: 1px solid rgba(255, 255, 255, 0.12);
-	padding: 1.65rem 1.5rem 1.5rem;
+	/* 閉じる「×」のための余白を確保 */
+	padding: 2.55rem 2.45rem 1.75rem;
 	box-shadow: 0 28px 96px rgba(0, 0, 0, 0.6);
 }
 .library-detail-modal__close {
@@ -277,13 +284,13 @@ body {
 	top: 0.65rem;
 	right: 0.65rem;
 	z-index: 2;
-	width: 2.5rem;
-	height: 2.5rem;
+	width: 2.9rem;
+	height: 2.9rem;
 	border: none;
-	border-radius: 8px;
+	border-radius: 10px;
 	background: rgba(255, 255, 255, 0.08);
 	color: var(--text);
-	font-size: 1.5rem;
+	font-size: 1.65rem;
 	line-height: 1;
 	cursor: pointer;
 }
@@ -297,8 +304,12 @@ body {
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	align-self: flex-start;
 }
+.library-detail-modal__art-wrap .card-face {
+	width: clamp(200px, 40vw, 300px);
+	display: block;
+}
 .library-detail-modal__art-wrap img {
-	width: min(480px, 92vw);
+	width: clamp(200px, 40vw, 300px);
 	display: block;
 	vertical-align: middle;
 	box-shadow: 0 16px 56px rgba(0, 0, 0, 0.5);
@@ -459,6 +470,20 @@ body {
 	cursor: pointer;
 }
 .mini-card img { width: 72px; border-radius: 8px; display: block; }
+.page--deck .mini-card .card-face--mini-deck {
+	width: 72px;
+	max-width: 72px;
+}
+.page--deck .mini-card--deck .card-face--mini-deck {
+	width: clamp(96px, 11vw, 124px);
+	max-width: clamp(96px, 11vw, 124px);
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.page--deck .mini-card--lib .card-face--mini-deck {
+	width: clamp(142px, 20vw, 200px);
+	max-width: clamp(142px, 20vw, 200px);
+	box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+}
 .page--deck .mini-card--deck img {
 	width: clamp(96px, 11vw, 124px);
 	border-radius: 10px;
@@ -486,9 +511,83 @@ body {
 }
 .modal__box { position: relative; max-width: 90vw; }
 .modal__box img { max-height: 80vh; border-radius: 12px; }
+.modal__box .preview-face {
+	width: min(520px, 90vw);
+}
 .modal__close {
 	position: absolute; top: -2rem; right: 0;
 	background: transparent; border: none; color: #fff; font-size: 1.5rem; cursor: pointer;
+}
+
+/* =========================
+   Tooltip (deck / library)
+   ========================= */
+.deck-tooltip {
+	position: fixed;
+	z-index: 80;
+	max-width: min(360px, 92vw);
+	background: rgba(10, 12, 18, 0.92);
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 12px;
+	box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+	color: var(--text);
+	pointer-events: none;
+}
+.deck-tooltip__inner {
+	padding: 0.75rem 0.9rem;
+	display: grid;
+	gap: 0.55rem;
+}
+.deck-tooltip__name {
+	margin: 0;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+}
+.deck-tooltip__stats {
+	margin: 0;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0.25rem 0.65rem;
+	align-items: baseline;
+	font-size: 0.95rem;
+}
+.deck-tooltip__stats dt {
+	margin: 0;
+	color: var(--muted);
+	font-weight: 600;
+}
+.deck-tooltip__stats dd {
+	margin: 0;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+}
+.deck-tooltip__label {
+	margin: 0;
+	color: var(--accent-2);
+	font-size: 0.78rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+.deck-tooltip__ability {
+	margin: 0;
+	color: var(--text);
+	font-size: 0.92rem;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.deck-tooltip__ability-tag {
+	display: inline-block;
+	padding: 0.06rem 0.4rem;
+	border-radius: 999px;
+	background: rgba(74, 125, 255, 0.18);
+	border: 1px solid rgba(74, 125, 255, 0.35);
+	font-weight: 800;
+	font-size: 0.82em;
+}
+.deck-tooltip__ability-desc {
+	color: var(--text);
 }
 
 .page--battle .battle-row {
@@ -620,3 +719,183 @@ body {
 
 .mission-mini { font-size: 0.9rem; color: var(--muted); }
 .mission-list { list-style: none; padding: 0; margin: 0; }
+
+/* =========================
+   Card face (layered)
+   ========================= */
+.card-face {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 5 / 7;
+	container-type: inline-size;
+	container-name: cardface;
+	/* 500×700 モック基準 */
+	--cf-cost-top: 1.65%;
+	--cf-cost-left: 1.75%;
+	--cf-cost-size: 10cqi;
+	--cf-power-top: 2.05%;
+	--cf-power-size: 9cqi;
+	--cf-name-left: 38%;
+	--cf-name-top: 48.5%;
+	--cf-name-width: 57%;
+	--cf-name-size: 6.48cqi;
+	--cf-attr-left: 81.45%;
+	--cf-attr-bottom: 45.85%;
+	--cf-attr-size: 4.35cqi;
+	--cf-ability-bottom: 2.8%;
+	--cf-ability-height: 35%;
+	--cf-ability-pad-x: 7%;
+	--cf-ability-body: 4.5cqi;
+	--cf-ability-head: 5.6cqi;
+}
+.card-face__layer {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+.card-face--layered {
+	isolation: isolate;
+	background-color: #e4e5eb;
+	overflow: hidden;
+	border-radius: 12px;
+}
+.card-face__stack {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	border-radius: inherit;
+	overflow: hidden;
+}
+.card-face__layer-img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+	object-fit: contain;
+	object-position: center top;
+	pointer-events: none;
+}
+.card-face__layer-img--base { z-index: 10; }
+.card-face__layer-img--portrait { z-index: 20; object-fit: cover; object-position: center 18%; }
+.card-face__layer-img--bar { z-index: 30; }
+.card-face__layer-img--frame { z-index: 50; }
+
+.card-face__datum {
+	position: absolute;
+	inset: 0;
+	z-index: 100;
+	pointer-events: none;
+}
+.card-face__narrative {
+	position: absolute;
+	inset: 0;
+	z-index: 110;
+	pointer-events: none;
+}
+.card-face__cost {
+	position: absolute;
+	left: var(--cf-cost-left);
+	top: var(--cf-cost-top);
+	width: 13.5%;
+	aspect-ratio: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: #1a1a1a;
+	font-size: var(--cf-cost-size);
+	line-height: 1;
+}
+.card-face__power {
+	position: absolute;
+	left: 50%;
+	top: var(--cf-power-top);
+	transform: translateX(-50%);
+	width: 15%;
+	aspect-ratio: 1 / 0.92;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: #1a1a1a;
+	font-size: var(--cf-power-size);
+	line-height: 1;
+}
+.card-face__name {
+	position: absolute;
+	left: var(--cf-name-left);
+	top: var(--cf-name-top);
+	transform: translate(-50%, -50%);
+	width: var(--cf-name-width);
+	text-align: center;
+	font-weight: 700;
+	color: #1a1a1a;
+	font-size: var(--cf-name-size);
+	line-height: 1.2;
+	max-height: 14%;
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	word-break: break-word;
+}
+.card-face__attr-label {
+	position: absolute;
+	left: var(--cf-attr-left);
+	bottom: var(--cf-attr-bottom);
+	transform: translateX(-50%);
+	width: 44%;
+	text-align: center;
+	font-weight: 700;
+	color: #f8f8f8;
+	font-size: var(--cf-attr-size);
+	line-height: 1.15;
+	letter-spacing: 0.04em;
+}
+.card-face__attr-line { display: inline; }
+.card-face__attr-label--compound {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	align-items: flex-start;
+	text-align: left;
+	min-height: 2.55em;
+	line-height: 1.12;
+	left: calc(var(--cf-attr-left) + 14.8%);
+	font-size: 2.95cqi;
+}
+.card-face__attr-label--compound .card-face__attr-line { display: block; }
+
+.card-face__ability {
+	position: absolute;
+	left: var(--cf-ability-pad-x);
+	right: var(--cf-ability-pad-x);
+	bottom: var(--cf-ability-bottom);
+	height: var(--cf-ability-height);
+	overflow: hidden;
+	color: #f5f5f5;
+	display: flex;
+	flex-direction: column;
+	gap: 0.2em;
+}
+.card-face__ability-head {
+	margin: 0;
+	font-size: var(--cf-ability-head);
+	font-weight: 800;
+	line-height: 1.35;
+}
+.card-face__ability-body {
+	margin: 0;
+	font-size: var(--cf-ability-body);
+	font-weight: 500;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/* コンパクト表示（手札など）は本文を隠す */
+.card-face--compact .card-face__narrative { display: none; }

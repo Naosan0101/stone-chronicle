@@ -5,6 +5,9 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>デッキ編集 — ストーンズクロニクル</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<meta name="stone_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
+	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
+	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
 </head>
 <body class="page page--deck">
 <header class="topbar">
@@ -49,12 +52,31 @@
 					<label class="deck-lib-field">名前検索
 						<input type="search" id="lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名の一部"/>
 					</label>
-					<label class="deck-lib-field">並び替え
+					<label class="deck-lib-field">種族
+						<select id="lib-filter-attr" class="deck-lib-select">
+							<option value="" selected>すべて</option>
+							<option value="HUMAN">人間</option>
+							<option value="ELF">エルフ</option>
+							<option value="UNDEAD">アンデッド</option>
+							<option value="DRAGON">ドラゴン</option>
+						</select>
+					</label>
+					<label class="deck-lib-field">強さ
+						<select id="lib-filter-power" class="deck-lib-select">
+							<option value="" selected>すべて</option>
+							<option value="0">0</option>
+							<option value="1">1</option>
+							<option value="2">2</option>
+							<option value="3">3</option>
+							<option value="4">4</option>
+							<option value="5">5</option>
+							<option value="6">6</option>
+						</select>
+					</label>
+					<label class="deck-lib-field">並び替え（強さ）
 						<select id="lib-sort" class="deck-lib-select">
-							<option value="attr_power_asc" selected>種族 → 強さ（小→大）</option>
-							<option value="attr_power_desc">種族 → 強さ（大→小）</option>
-							<option value="power_attr_asc">強さ（小→大）→ 種族</option>
-							<option value="power_attr_desc">強さ（大→小）→ 種族</option>
+							<option value="power_asc" selected>強さ 小→大</option>
+							<option value="power_desc">強さ 大→小</option>
 						</select>
 					</label>
 				</div>
@@ -70,18 +92,39 @@
 	<div th:each="c : ${library}" class="seed"
 	     th:data-id="${c.id}"
 	     th:data-img="${c.imagePath}"
+	     th:data-layer-base="${c.layerBasePath}"
+	     th:data-layer-portrait="${c.layerPortraitPath}"
+	     th:data-layer-bar="${c.barImagePath}"
+	     th:data-layer-frame="${c.layerFramePath}"
 	     th:data-qty="${c.quantity}"
 	     th:data-name="${c.name}"
 	     th:data-attribute="${c.attribute}"
-	     th:data-power="${c.basePower}"></div>
+	     th:data-attribute-label="${c.attributeLabelJa}"
+	     th:data-power="${c.basePower}"
+	     th:data-cost="${c.cost}"
+	     th:attr="data-ability=${c.libraryAbilityText},data-attr-pipe=${c.attributeLabelPipe}"></div>
 </div>
 <div id="selected-seed" style="display:none">
 	<span th:each="sid : ${selectedIds}" th:text="${sid}"></span>
 </div>
 
+<div id="deck-tooltip" class="deck-tooltip" hidden role="tooltip">
+	<div class="deck-tooltip__inner">
+		<p class="deck-tooltip__name"></p>
+		<dl class="deck-tooltip__stats">
+			<div><dt>種族</dt><dd class="deck-tooltip__attr"></dd></div>
+			<div><dt>コスト</dt><dd class="deck-tooltip__cost"></dd></div>
+			<div><dt>強さ</dt><dd class="deck-tooltip__power"></dd></div>
+		</dl>
+		<p class="deck-tooltip__label">効果</p>
+		<p class="deck-tooltip__ability"></p>
+	</div>
+</div>
+
 <div id="preview" class="modal" hidden>
 	<div class="modal__box">
 		<button type="button" class="modal__close" onclick="document.getElementById('preview').hidden=true">×</button>
+		<div id="preview-face" class="preview-face"></div>
 		<img id="preview-img" alt=""/>
 	</div>
 </div>

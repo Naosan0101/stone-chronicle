@@ -3,12 +3,14 @@
 <mapper namespace="com.example.stonechronicle.repository.AppUserMapper">
 
 	<select id="findByUsername" resultType="com.example.stonechronicle.domain.AppUser">
-		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt
+		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt,
+		       last_access_at AS lastAccessAt
 		FROM app_user WHERE username = #{username}
 	</select>
 
 	<select id="findById" resultType="com.example.stonechronicle.domain.AppUser">
-		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt
+		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt,
+		       last_access_at AS lastAccessAt
 		FROM app_user WHERE id = #{id}
 	</select>
 
@@ -24,4 +26,12 @@
 	<update id="updateLastMissionDate">
 		UPDATE app_user SET last_mission_date = #{lastMissionDate} WHERE id = #{id}
 	</update>
+
+	<update id="updateLastAccessAt">
+		UPDATE app_user SET last_access_at = #{at} WHERE id = #{id}
+	</update>
+
+	<delete id="deleteUsersWithLastAccessBefore">
+		DELETE FROM app_user WHERE last_access_at &lt; #{before}
+	</delete>
 </mapper>

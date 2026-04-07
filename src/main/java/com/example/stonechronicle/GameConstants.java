@@ -1,12 +1,87 @@
 package com.example.stonechronicle;
 
+import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
+import java.util.Locale;
+import org.springframework.web.util.UriUtils;
+
+/**
+ * 静的画像 URL（{@code /images/cards/…}）。参照時は NFD に正規化しリソース名と一致させる。拡張子は {@code .PNG} / {@code .JPEG} にそろえる。
+ */
 public final class GameConstants {
-	public static final String CARD_IMAGE_PREFIX = "/images/cards/";
+	public static final String CARD_ASSET_DIR = "/images/cards/";
 
-	/** 実ファイル名（展開ZIPの表記に合わせる） */
-	public static final String CARD_BACK_FILE = "カードうら.PNG";
+	private static String normalizeImageExtension(String filename) {
+		if (filename == null || filename.isBlank()) {
+			return filename;
+		}
+		int dot = filename.lastIndexOf('.');
+		if (dot < 0) {
+			return filename;
+		}
+		String base = filename.substring(0, dot);
+		String ext = filename.substring(dot).toLowerCase(Locale.ROOT);
+		if (ext.equals(".png")) {
+			return base + ".PNG";
+		}
+		if (ext.equals(".jpg") || ext.equals(".jpeg")) {
+			return base + ".JPEG";
+		}
+		return base + filename.substring(dot).toUpperCase(Locale.ROOT);
+	}
 
-	public static final String CARD_PACK_FILE = "カードパック_イラスト.JPEG";
+	/**
+	 * クラスパス上の実ファイル名（Git / macOS 由来は NFD になりやすい）と一致させる。
+	 * NFC のまま URL 化すると、エントリ名が NFD の JAR 内リソースと一致せず 404 になる。
+	 */
+	private static String encCardFile(String filename) {
+		if (filename == null || filename.isBlank()) {
+			return "";
+		}
+		String trimmed = filename.trim();
+		String nfd = Normalizer.normalize(trimmed, Normalizer.Form.NFD);
+		String normalized = normalizeImageExtension(nfd);
+		return CARD_ASSET_DIR + UriUtils.encodePathSegment(normalized, StandardCharsets.UTF_8);
+	}
+
+	/** ①カード基盤 */
+	public static final String CARD_LAYER_BASE = encCardFile("カード基盤.PNG");
+
+	/** ③カード基礎データ（装飾・枠・最前面の画像レイヤー） */
+	public static final String CARD_LAYER_DATA = encCardFile("カード基礎データ.PNG");
+
+	/** ②種族バー */
+	public static String cardLayerBarPath(String attribute) {
+		String file = switch (attribute == null || attribute.isBlank() ? "HUMAN" : attribute.toUpperCase(Locale.ROOT)) {
+			case "HUMAN" -> "人間バー.PNG";
+			case "ELF" -> "エルフバー.PNG";
+			case "UNDEAD" -> "アンデッドバー.PNG";
+			case "DRAGON" -> "ドラゴンバー.PNG";
+			case "ELF_UNDEAD" -> "エルフアンデッドバー.PNG";
+			default -> "人間バー.PNG";
+		};
+		return encCardFile(file);
+	}
+
+	/** キャライラスト（DB image_file）。拡張子は .PNG / .JPEG に正規化。 */
+	public static String cardPortraitPath(String imageFile) {
+		if (imageFile == null || imageFile.isBlank()) {
+			return "";
+		}
+		return encCardFile(imageFile);
+	}
+
+	public static final String CARD_BACK_FILE = "カードうら.PNG";
+
+	public static String cardBackUrl() {
+		return encCardFile(CARD_BACK_FILE);
+	}
+
+	public static final String CARD_PACK_FILE = "カードパック_イラスト.JPEG";
+
+	public static String packImageUrl() {
+		return encCardFile(CARD_PACK_FILE);
+	}
 
 	public static final int STARTING_COINS = 6;
 	public static final int PACK_COST = 3;
