@@ -3,12 +3,12 @@
 <head>
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<title>ストーンズクロニクル — 新規登録</title>
+	<title>ナインユニバース — 新規登録</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
 <body class="page page--auth">
 <div class="auth-card">
-	<h1 class="game-title">ストーンズクロニクル</h1>
+	<h1 class="game-title">ナインユニバース</h1>
 	<p class="error" th:if="${error}" th:text="${error}"></p>
 	<p class="ok" th:if="${msg}" th:text="${msg}"></p>
 	<form th:action="@{/register}" method="post" class="stack">
