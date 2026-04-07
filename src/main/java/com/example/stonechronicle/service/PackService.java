@@ -104,6 +104,8 @@ public class PackService {
 		List<CardDefinition> out = new ArrayList<>();
 		for (CardDefinition c : all) {
 			if (c == null) continue;
+			// 風の魔人（ID=14）は邪悪なる脅威パックから除外
+			if (type == PackType.EVIL_THREAT && c.getId() != null && c.getId() == 14) continue;
 			String attr = c.getAttribute();
 			if (attr == null) continue;
 			boolean isHuman = hasAttr(attr, "HUMAN");

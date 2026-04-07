@@ -152,9 +152,10 @@
 		}
 
 		pushLayer('base', c.layerBase, plateFbFull);
-		if (c.layerPortrait) {
-			pushLayer('portrait', c.layerPortrait, '');
-		}
+		// イラスト層は card-face フラグメントと同様、素材整備後に有効化
+		// if (c.layerPortrait) {
+		// 	pushLayer('portrait', c.layerPortrait, '');
+		// }
 		pushLayer('bar', c.layerBar, '');
 		pushLayer('frame', c.layerFrame, dataFbFull);
 
@@ -200,9 +201,10 @@
 		}
 
 		pushLayer('base', c.layerBase, plateFbFull);
-		if (c.layerPortrait) {
-			pushLayer('portrait', c.layerPortrait, '');
-		}
+		// イラスト層は card-face フラグメントと同様、素材整備後に有効化
+		// if (c.layerPortrait) {
+		// 	pushLayer('portrait', c.layerPortrait, '');
+		// }
 		pushLayer('bar', c.layerBar, '');
 		pushLayer('frame', c.layerFrame, dataFbFull);
 

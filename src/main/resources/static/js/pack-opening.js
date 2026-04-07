@@ -15,10 +15,6 @@
 		});
 	}
 
-	function isRare(rarity) {
-		return rarity && rarity !== 'C';
-	}
-
 	function shake() {
 		document.body.classList.add('pack-shake');
 		setTimeout(function () {
@@ -34,16 +30,18 @@
 		const back = btn.querySelector('.pack-opening-card__back');
 		const spark = btn.querySelector('.pack-opening-card__spark');
 		const arrow = btn.querySelector('.pack-opening-card__arrow');
-		const rarity = btn.dataset.rarity || 'C';
+		const rarity = (btn.dataset.rarity || 'C').trim();
 
 		if (back) back.classList.add('is-flipped');
 		if (face) face.hidden = false;
 		if (arrow) arrow.hidden = true;
-		if (spark && typeof fillContinuousCardSpark === 'function') {
+		if (spark && typeof fillPackRevealBurstSpark === 'function') {
+			fillPackRevealBurstSpark(spark, rarity);
+		} else if (spark && typeof fillContinuousCardSpark === 'function') {
 			fillContinuousCardSpark(spark, rarity);
 		}
 
-		if (isRare(rarity)) {
+		if (rarity === 'Reg') {
 			shake();
 		}
 

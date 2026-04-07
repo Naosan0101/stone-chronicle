@@ -13,11 +13,13 @@
 		     th:src="|${cp != null ? cp : ''}${c.layerBasePath}|"
 		     alt=""
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
+		<!--/* イラスト層は素材整備後に有効化（未実装の間は壊れアイコン防止のため出力しない。library.html モーダルと同様）
 		<img class="card-face__layer-img card-face__layer-img--portrait"
 		     th:if="${c.layerPortraitPath != null && !c.layerPortraitPath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerPortraitPath}|"
 		     alt=""
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
+		*/-->
 		<img class="card-face__layer-img card-face__layer-img--bar"
 		     th:if="${c.barImagePath != null && !c.barImagePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.barImagePath}|"

@@ -1,5 +1,6 @@
 /**
  * カード上のキラ粒（R/Ep/Reg）。各粒にランダムな周期・遅延を付けて無限ループさせる。
+ * パック開封は fillPackRevealBurstSpark（約2秒のバースト）。
  */
 (function (global) {
 	'use strict';
@@ -85,5 +86,94 @@
 		sparkEl.hidden = false;
 	}
 
+	/**
+	 * パック開封：めくった瞬間だけ、カード周囲に約2秒の派手なキラ（終了後に DOM を片付ける）
+	 */
+	function fillPackRevealBurstSpark(sparkEl, rarity) {
+		if (!sparkEl) return;
+		sparkEl.textContent = '';
+		sparkEl.classList.remove(
+			'is-on',
+			'card-spark--continuous',
+			'spark--R',
+			'spark--Ep',
+			'spark--Reg',
+			'spark--burst-reveal',
+			'spark--burst-C'
+		);
+
+		const r = (rarity || 'C').trim();
+		if (r === 'R') sparkEl.classList.add('spark--R');
+		else if (r === 'Ep') sparkEl.classList.add('spark--Ep');
+		else if (r === 'Reg') sparkEl.classList.add('spark--Reg');
+		else sparkEl.classList.add('spark--burst-C');
+
+		const dotCount = r === 'Reg' ? 68 : r === 'Ep' ? 54 : r === 'R' ? 46 : 40;
+		const streaks = r === 'Reg' ? 12 : r === 'Ep' ? 9 : r === 'R' ? 8 : 7;
+		const stars = r === 'Reg' ? 18 : r === 'Ep' ? 14 : r === 'R' ? 11 : 9;
+
+		for (let i = 0; i < dotCount; i++) {
+			const p = document.createElement('i');
+			const isDiamond = i % 4 === 0;
+			p.className = 'spark-particle spark-particle--burst-dot' + (isDiamond ? ' spark-particle--burst-diamond' : '');
+			p.style.setProperty('--spin', isDiamond ? '45deg' : '0deg');
+			p.style.setProperty('--x', (Math.random() * 100).toFixed(2) + '%');
+			p.style.setProperty('--y', (Math.random() * 100).toFixed(2) + '%');
+			const mag = r === 'Reg' ? 22 : r === 'Ep' ? 18 : r === 'R' ? 16 : 14;
+			p.style.setProperty('--dx', ((Math.random() * 2 - 1) * mag).toFixed(2) + 'px');
+			p.style.setProperty('--dy', ((Math.random() * 2 - 1) * (mag + 4)).toFixed(2) + 'px');
+			p.style.setProperty('--s', (0.85 + Math.random() * 1.15).toFixed(2));
+			p.style.setProperty('--d', (Math.random() * 520).toFixed(0) + 'ms');
+			p.style.setProperty('--a', (0.55 + Math.random() * 0.42).toFixed(2));
+			sparkEl.appendChild(p);
+		}
+
+		for (let i = 0; i < streaks; i++) {
+			const p = document.createElement('i');
+			p.className = 'spark-particle spark-particle--burst-streak';
+			p.style.setProperty('--x', (10 + Math.random() * 80).toFixed(2) + '%');
+			p.style.setProperty('--y', (8 + Math.random() * 72).toFixed(2) + '%');
+			p.style.setProperty('--rot', (-52 + Math.random() * 104).toFixed(2) + 'deg');
+			p.style.setProperty('--len', ((r === 'Reg' ? 88 : 72) + Math.random() * 56).toFixed(0) + 'px');
+			p.style.setProperty('--d', (Math.random() * 380).toFixed(0) + 'ms');
+			p.style.setProperty('--a', (0.35 + Math.random() * 0.45).toFixed(2));
+			sparkEl.appendChild(p);
+		}
+
+		for (let i = 0; i < stars; i++) {
+			const p = document.createElement('i');
+			p.className = 'spark-particle spark-particle--burst-star';
+			p.style.setProperty('--x', (Math.random() * 100).toFixed(2) + '%');
+			p.style.setProperty('--y', (Math.random() * 100).toFixed(2) + '%');
+			const sm = r === 'Reg' ? 20 : r === 'Ep' ? 16 : 14;
+			p.style.setProperty('--dx', ((Math.random() * 2 - 1) * sm).toFixed(2) + 'px');
+			p.style.setProperty('--dy', ((Math.random() * 2 - 1) * (sm + 2)).toFixed(2) + 'px');
+			p.style.setProperty('--s', (0.75 + Math.random() * 1.25).toFixed(2));
+			p.style.setProperty('--rot', (Math.random() * 360).toFixed(0) + 'deg');
+			p.style.setProperty('--d', (Math.random() * 450).toFixed(0) + 'ms');
+			p.style.setProperty('--a', (0.5 + Math.random() * 0.48).toFixed(2));
+			sparkEl.appendChild(p);
+		}
+
+		sparkEl.classList.add('spark--burst-reveal');
+		sparkEl.hidden = false;
+		void sparkEl.offsetWidth;
+		sparkEl.classList.add('is-on');
+
+		window.setTimeout(function () {
+			sparkEl.classList.remove(
+				'is-on',
+				'spark--burst-reveal',
+				'spark--R',
+				'spark--Ep',
+				'spark--Reg',
+				'spark--burst-C'
+			);
+			sparkEl.textContent = '';
+			sparkEl.hidden = true;
+		}, 2000);
+	}
+
 	global.fillContinuousCardSpark = fillContinuousCardSpark;
+	global.fillPackRevealBurstSpark = fillPackRevealBurstSpark;
 })(typeof window !== 'undefined' ? window : this);
