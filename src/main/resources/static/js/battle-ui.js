@@ -15,6 +15,12 @@
 	const plateFbFull = document.querySelector('meta[name="card_plate_fallback"]')?.getAttribute('content') || '';
 	const dataFbFull = document.querySelector('meta[name="card_data_fallback"]')?.getAttribute('content') || '';
 
+	// Intercept surrender immediately (before async init finishes).
+	const surrenderGuard = {
+		installed: false,
+		submitting: false
+	};
+
 	function absUrl(path) {
 		if (path == null || path === '') return '';
 		const p = String(path);
@@ -37,8 +43,146 @@
 		sparkLevelUpRest: false,
 		sparkLevelUpStone: false,
 		_luPrevPowerInstanceId: null,
-		_luPrevPower: null
+		_luPrevPower: null,
+		_resultShown: false,
+		_resultModalEl: null
 	};
+
+	function teardownResultModal() {
+		if (ui._resultModalEl && ui._resultModalEl.parentNode) {
+			ui._resultModalEl.remove();
+		}
+		ui._resultModalEl = null;
+	}
+
+	function showResultModal(kind, title, detail, options) {
+		const o = options || {};
+		teardownResultModal();
+		hideBattleCardTooltip();
+		hideBattleDeckTooltip();
+
+		const overlay = el('div', 'battle-result-modal battle-result-modal--' + kind);
+		overlay.setAttribute('role', 'dialog');
+		overlay.setAttribute('aria-modal', 'true');
+		overlay.setAttribute('aria-label', title || '結果');
+
+		if (o.showy) {
+			overlay.classList.add('battle-result-modal--showy');
+			const burst = el('div', 'battle-result-modal__burst', null);
+			burst.setAttribute('aria-hidden', 'true');
+			overlay.appendChild(burst);
+		}
+
+		const panel = el('div', 'battle-result-modal__panel');
+		const h = el('h2', 'battle-result-modal__title', title || '');
+		const d = el('p', 'battle-result-modal__detail muted', detail || '');
+		panel.appendChild(h);
+		panel.appendChild(d);
+
+		const actions = el('div', 'battle-result-modal__actions');
+		const close = el('button', 'btn btn--ghost', '閉じる');
+		close.type = 'button';
+		actions.appendChild(close);
+		panel.appendChild(actions);
+
+		overlay.appendChild(panel);
+		document.body.appendChild(overlay);
+		ui._resultModalEl = overlay;
+
+		function onClose() {
+			teardownResultModal();
+			if (typeof o.onClose === 'function') {
+				o.onClose();
+			}
+		}
+		close.addEventListener('click', onClose);
+		// IMPORTANT: result modal must stay until user presses a button.
+		// So we intentionally do NOT close on backdrop click or Escape.
+		close.focus();
+	}
+
+	function isSurrenderForm(el) {
+		if (!(el instanceof HTMLFormElement)) return false;
+		const raw = (el.getAttribute('action') || '').trim();
+		// Ignore query/hash and tolerate absolute/relative/context-prefixed URLs.
+		const action = raw.split('#')[0].split('?')[0];
+		return action.indexOf('/battle/cpu/surrender') >= 0;
+	}
+
+	function installSurrenderIntercept() {
+		if (surrenderGuard.installed) return;
+		surrenderGuard.installed = true;
+
+		function openSurrenderModalAndBlock(form) {
+			if (!isSurrenderForm(form)) return;
+			if (surrenderGuard.submitting) return;
+			showResultModal('defeat', '敗北', '降参しました。', {
+				onClose: function () {
+					surrenderGuard.submitting = true;
+					try { form.submit(); } catch (_) { /* ignore */ }
+				}
+			});
+		}
+
+		// Capture click on the surrender submit button to block navigation even if submit event
+		// is bypassed (e.g. by other handlers calling form.submit()).
+		document.addEventListener(
+			'click',
+			function (e) {
+				const t = e.target;
+				if (!(t instanceof Element)) return;
+				const form = t.closest('form');
+				if (!isSurrenderForm(form)) return;
+				// Only intercept genuine submit triggers.
+				const isSubmitTrigger =
+					(t.closest('button[type="submit"]') != null) ||
+					(t instanceof HTMLInputElement && (t.type || '').toLowerCase() === 'submit');
+				if (!isSubmitTrigger) return;
+				if (surrenderGuard.submitting) return;
+				e.preventDefault();
+				e.stopPropagation();
+				openSurrenderModalAndBlock(form);
+			},
+			true
+		);
+
+		document.addEventListener(
+			'submit',
+			function (e) {
+				const t = e.target;
+				if (!isSurrenderForm(t)) return;
+				if (surrenderGuard.submitting) return;
+				e.preventDefault();
+				openSurrenderModalAndBlock(t);
+			},
+			true // capture: run even if other handlers exist
+		);
+	}
+
+	function maybeShowGameOverModal(st) {
+		if (!st) return;
+		if (!st.gameOver) {
+			ui._resultShown = false;
+			teardownResultModal();
+			return;
+		}
+		if (ui._resultShown) return;
+		ui._resultShown = true;
+
+		const msg = st.lastMessage != null ? String(st.lastMessage) : '';
+		if (st.humanWon) {
+			const showy = msg.indexOf('勝利（CPUが相手以上のファイターを出せません）') >= 0;
+			showResultModal('victory', '勝利', msg || '勝利しました。', {
+				showy: showy,
+				onClose: function () {
+					// Return to home on victory close.
+					window.location.href = contextPath + '/';
+				}
+			});
+		} else {
+			showResultModal('defeat', '敗北', msg || '敗北しました。');
+		}
+	}
 
 	/** CardDefDto → card-face-layer.js（ライブラリと同一テンプレート） */
 	function buildBattleCardFaceShell(d, variant) {
@@ -152,6 +296,23 @@
 			chunks.push(body || '—');
 		});
 		return chunks.join('\n');
+	}
+
+	function resolveDefByAbilityDeployCode(defs, abilityDeployCode, promptHint) {
+		if (!defs || !abilityDeployCode) return null;
+		const code = String(abilityDeployCode);
+		const hint = promptHint != null ? String(promptHint) : '';
+		let fallback = null;
+		const keys = Object.keys(defs);
+		for (let i = 0; i < keys.length; i++) {
+			const d = defs[keys[i]];
+			if (!d) continue;
+			if (d.abilityDeployCode !== code) continue;
+			// Prefer exact name match when available (prompt is often the card name)
+			if (hint && d.name && String(d.name) === hint) return d;
+			if (!fallback) fallback = d;
+		}
+		return fallback;
 	}
 
 	function fillBattleTooltipAbility(el, raw) {
@@ -345,7 +506,9 @@
 			caret.setAttribute('aria-hidden', 'true');
 			btn.appendChild(caret);
 			if (d) {
-				btn.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				const shell = buildBattleCardFaceShell(d, 'modal');
+				applyCurrentPowerDisplayToBattleCardFace(st, st.defs, shell, c.instanceId, d, { includeNextDeployBonus: true });
+				btn.appendChild(shell);
 				applyBattleCardTipData(btn, d);
 			}
 			grid.appendChild(btn);
@@ -476,6 +639,7 @@
 		const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
 		const overlay = el('div', 'battle-pay-modal');
+		overlay.classList.add('battle-rest-list-modal');
 		overlay.setAttribute('role', 'dialog');
 		overlay.setAttribute('aria-modal', 'true');
 		overlay.setAttribute('aria-label', title + '一覧');
@@ -569,7 +733,9 @@
 			host.type = 'button';
 			host.dataset.instanceId = c.instanceId;
 			if (d) {
-				host.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				const shell = buildBattleCardFaceShell(d, 'modal');
+				applyCurrentPowerDisplayToBattleCardFace(st, st.defs, shell, c.instanceId, d, { includeNextDeployBonus: true });
+				host.appendChild(shell);
 				applyBattleCardTipData(host, d);
 			}
 			grid.appendChild(host);
@@ -751,7 +917,7 @@
 		return wrap;
 	}
 
-	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp, nextDeployBonus, nextElfOnlyBonus }) {
+	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp, nextDeployBonus, nextElfOnlyBonus, nextDeployCostBonusTimes }) {
 		const wrap = el('div', faceDown ? 'hand backs' : 'hand');
 		if (faceDown && compactOpp) {
 			wrap.classList.add('hand--opp-backs');
@@ -786,6 +952,10 @@
 				let bonus = Number(nextDeployBonus || 0);
 				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttribute(d.attribute, 'ELF')) {
 					bonus += Number(nextElfOnlyBonus || 0);
+				}
+				if (Number(nextDeployCostBonusTimes || 0) > 0) {
+					const c = Number(d.cost != null ? d.cost : 0);
+					bonus += c * Number(nextDeployCostBonusTimes || 0);
 				}
 				const curPow = lastStateForHandPower
 					? previewHumanBattlePowerForHand(lastStateForHandPower, defs, d, bonus)
@@ -877,8 +1047,22 @@
 
 	function computeDeployBonus(def, levelUpRest, levelUpStones) {
 		if (!def) return 0;
-		const perRest = def.abilityDeployCode === 'SHOKIN' ? 3 : 2;
-		return levelUpRest * perRest + levelUpStones * 2;
+		return levelUpRest * 2 + levelUpStones * 2;
+	}
+
+	function computeHumanNextDeployBonusForDef(st, def) {
+		if (!st || !def) return 0;
+		let bonus = Number(st.humanNextDeployBonus || 0);
+		const elfOnly = Number(st.humanNextElfOnlyBonus || 0);
+		if (elfOnly > 0 && hasCardAttribute(def.attribute, 'ELF')) {
+			bonus += elfOnly;
+		}
+		const costTimes = Number(st.humanNextDeployCostBonusTimes || 0);
+		if (costTimes > 0) {
+			const c = Number(def.cost != null ? def.cost : 0);
+			bonus += c * costTimes;
+		}
+		return bonus;
 	}
 
 	/** 手札表示用: 「いま配置したら」の常時効果込み強さ（UIで選んだレベルアップ指定は含めない） */
@@ -1055,6 +1239,25 @@
 		const sparkHost = wrapLevelUpPreviewPowerSparkHost(powEl);
 		if (sparkHost) {
 			appendLevelUpValueSparkBurst(sparkHost);
+		}
+	}
+
+	function applyCurrentPowerDisplayToBattleCardFace(st, defs, shellRoot, instanceId, def, options) {
+		if (!shellRoot || !def) return;
+		const o = options || {};
+		const basePow = Number(def.basePower != null ? def.basePower : 0);
+		let bonus = 0;
+		if (o.includeNextDeployBonus) {
+			bonus += Number(st && st.humanNextDeployBonus || 0);
+			const elfOnly = Number(st && st.humanNextElfOnlyBonus || 0);
+			if (elfOnly > 0 && hasCardAttribute(def.attribute, 'ELF')) bonus += elfOnly;
+			const costTimes = Number(st && st.humanNextDeployCostBonusTimes || 0);
+			if (costTimes > 0) bonus += Number(def.cost != null ? def.cost : 0) * costTimes;
+		}
+		const curPow = st ? previewHumanBattlePowerForHand(st, defs, def, bonus) : (basePow + bonus);
+		applyCurrentPowerDisplay(shellRoot, basePow, curPow);
+		if (instanceId) {
+			maybeSparkPowerIncrease(shellRoot, instanceId, curPow);
 		}
 	}
 
@@ -1294,7 +1497,8 @@
 
 		const previewCol = el('div', 'battle-control--levelup__preview');
 		if (selDef) {
-			const deployB = computeDeployBonus(selDef, ui.levelUpRest, ui.levelUpStones);
+			const deployB = computeDeployBonus(selDef, ui.levelUpRest, ui.levelUpStones)
+				+ computeHumanNextDeployBonusForDef(st, selDef);
 			const previewPow = previewHumanBattlePower(st, st.defs, selDef, deployB);
 			const basePow = Number(selDef.basePower != null ? selDef.basePower : 0);
 			const instId = sel.instanceId;
@@ -1375,6 +1579,27 @@
 
 		if (pc.kind === 'CONFIRM_OPTIONAL_STONE') {
 			panel.appendChild(el('p', 'muted', 'ストーンを' + String(pc.stoneCost || 0) + '個使用しますか？'));
+
+			// Show ability details for the card that triggered this choice (best-effort via abilityDeployCode).
+			const detailDef = resolveDefByAbilityDeployCode(st.defs, pc.abilityDeployCode, pc.prompt);
+			if (detailDef) {
+				const detail = el('div', 'muted', null);
+				detail.style.whiteSpace = 'pre-wrap';
+				detail.style.wordBreak = 'break-word';
+				detail.style.overflowWrap = 'anywhere';
+				detail.style.lineHeight = '1.55';
+				detail.style.marginTop = '0.55rem';
+				detail.style.padding = '0.55rem 0.65rem';
+				detail.style.borderRadius = '10px';
+				detail.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+				detail.style.background = 'rgba(0, 0, 0, 0.18)';
+				const raw = battleCardAbilityTooltipText(detailDef);
+				const lines = String(raw || '').split('\n');
+				const first = lines.length ? String(lines[0]).trim() : '';
+				detail.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
+				panel.appendChild(detail);
+			}
+
 			const actions = el('div', 'battle-pay-modal__actions');
 			const noBtn = el('button', 'btn btn--ghost', 'しない');
 			noBtn.type = 'button';
@@ -1524,6 +1749,82 @@
 		document.body.appendChild(overlay);
 	}
 
+	function showBattleZoneDetailModal(def) {
+		if (!def) return;
+		hideBattleCardTooltip();
+		hideBattleDeckTooltip();
+
+		const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+		const overlay = el('div', 'battle-zone-detail-modal');
+		overlay.setAttribute('role', 'dialog');
+		overlay.setAttribute('aria-modal', 'true');
+		overlay.setAttribute('aria-label', 'カード詳細');
+
+		const panel = el('div', 'battle-zone-detail-modal__panel');
+		const closeBtn = el('button', 'battle-zone-detail-modal__close', '×');
+		closeBtn.type = 'button';
+		closeBtn.setAttribute('aria-label', '閉じる');
+		panel.appendChild(closeBtn);
+
+		const grid = el('div', 'battle-zone-detail-modal__grid');
+		const left = el('div', 'battle-zone-detail-modal__left');
+		const right = el('div', 'battle-zone-detail-modal__right');
+
+		const face = buildBattleCardFaceShell(def, 'zone');
+		face.classList.add('battle-zone-detail-modal__card');
+		left.appendChild(face);
+
+		right.appendChild(el('h3', 'battle-zone-detail-modal__name', def.name || '—'));
+
+		const stats = el('dl', 'battle-zone-detail-modal__stats');
+		function statRow(label, value) {
+			const wrap = el('div', 'battle-zone-detail-modal__stat');
+			wrap.appendChild(el('dt', '', label));
+			wrap.appendChild(el('dd', '', value));
+			return wrap;
+		}
+		stats.appendChild(statRow('種族', formatBattleCardAttr(def)));
+		stats.appendChild(statRow('コスト', String(def.cost != null ? def.cost : '—')));
+		stats.appendChild(statRow('強さ', String(def.basePower != null ? def.basePower : '—')));
+		stats.appendChild(statRow('★', String(def.rarity != null ? def.rarity : '—')));
+		right.appendChild(stats);
+
+		right.appendChild(el('p', 'battle-zone-detail-modal__label', '効果'));
+		const ability = el('div', 'battle-zone-detail-modal__ability');
+		ability.textContent = '';
+		const raw = battleCardAbilityTooltipText(def);
+		const lines = String(raw || '').split('\n');
+		const first = lines.length ? String(lines[0]).trim() : '';
+		ability.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
+		right.appendChild(ability);
+
+		grid.appendChild(left);
+		grid.appendChild(right);
+		panel.appendChild(grid);
+		overlay.appendChild(panel);
+		document.body.appendChild(overlay);
+
+		function teardown() {
+			overlay.remove();
+			document.removeEventListener('keydown', onKey);
+			if (previouslyFocused) previouslyFocused.focus();
+		}
+		function onKey(e) {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				teardown();
+			}
+		}
+
+		closeBtn.addEventListener('click', teardown);
+		overlay.addEventListener('click', function (e) {
+			if (e.target === overlay) teardown();
+		});
+		document.addEventListener('keydown', onKey);
+		closeBtn.focus();
+	}
+
 	function render(st) {
 		lastStateForHandPower = st;
 		lastDefsForTooltip = st.defs || null;
@@ -1555,7 +1856,7 @@
 			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
 			cellHand.appendChild(el('h3', '', '相手の手札'));
 			const oppHandRow = el('div', 'battle-opp-hand-row');
-			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true, nextDeployBonus: 0, nextElfOnlyBonus: 0 }));
+			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true, nextDeployBonus: 0, nextElfOnlyBonus: 0, nextDeployCostBonusTimes: 0 }));
 			const oppStonesInline = el('div', 'battle-opp-hand-row__stones');
 			oppStonesInline.setAttribute('aria-label', '相手ストーン所持数 ' + String(st.cpuStones));
 			oppStonesInline.appendChild(el('span', 'battle-opp-hand-row__stones-label', 'ストーン'));
@@ -1566,7 +1867,7 @@
 
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--opp-rest');
 			cellRest.appendChild(el('h3', '', 'レスト'));
-			cellRest.appendChild(renderRestStackVisual(st.cpuRest, st.defs, '相手レスト', { maxVisual: 4, stackOffsetPx: 2 }));
+			cellRest.appendChild(renderRestStackVisual(st.cpuRest, st.defs, 'レスト', { maxVisual: 4, stackOffsetPx: 2 }));
 			inner.appendChild(cellRest);
 
 			oppTop.appendChild(inner);
@@ -1578,12 +1879,12 @@
 			const zonesWrap = el('div', 'battle-zones-wrap');
 			const zonesStack = el('div', 'battle-zones-stack');
 			const cellZoneOpp = el('div', 'battle-cell battle-cell--zone battle-cell--zone-cpu');
-			cellZoneOpp.appendChild(el('h3', '', '相手バトルゾーン'));
+			cellZoneOpp.appendChild(el('h3', '', 'バトルゾーン'));
 			cellZoneOpp.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
 			zonesStack.appendChild(cellZoneOpp);
 
 			const cellZoneYou = el('div', 'battle-cell battle-cell--zone battle-cell--zone-human');
-			cellZoneYou.appendChild(el('h3', '', '自分バトルゾーン'));
+			cellZoneYou.appendChild(el('h3', '', 'バトルゾーン'));
 			cellZoneYou.appendChild(renderZone(st.humanBattle, st.defs, st.humanBattlePower));
 			zonesStack.appendChild(cellZoneYou);
 
@@ -1607,7 +1908,7 @@
 			const inner = el('div', 'battle-band__inner');
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--you-rest');
 			cellRest.appendChild(el('h3', '', 'レスト'));
-			cellRest.appendChild(renderRestStackVisual(st.humanRest, st.defs, '自分レスト', { maxVisual: 5, stackOffsetPx: 3 }));
+			cellRest.appendChild(renderRestStackVisual(st.humanRest, st.defs, 'レスト', { maxVisual: 5, stackOffsetPx: 3 }));
 			inner.appendChild(cellRest);
 
 			const cellHand = el('div', 'battle-cell battle-cell--you-hand');
@@ -1621,7 +1922,8 @@
 				faceDown: false,
 				selectable: st.humansTurn && !st.gameOver,
 				nextDeployBonus: st.humanNextDeployBonus || 0,
-				nextElfOnlyBonus: st.humanNextElfOnlyBonus || 0
+				nextElfOnlyBonus: st.humanNextElfOnlyBonus || 0,
+				nextDeployCostBonusTimes: st.humanNextDeployCostBonusTimes || 0
 			}));
 			inner.appendChild(cellHand);
 
@@ -1639,6 +1941,9 @@
 		}
 
 		wireBattleCardTooltips(app);
+
+		// game over modal (only once per battle end)
+		maybeShowGameOverModal(st);
 
 		// CPU random think (3-7s) → cpu-step
 		if (st.phase === 'CPU_THINKING' && !st.gameOver) {
@@ -1673,8 +1978,9 @@
 			const pe = st.pendingEffect;
 			const def = resolveCardDef(st.defs, pe.cardId);
 			const side = el('div', 'panel', null);
-			side.style.position = 'fixed';
-			side.style.right = '16px';
+			// absolute: scroll with the page (do NOT follow viewport)
+			side.style.position = 'absolute';
+			side.style.left = '16px';
 			side.style.top = '92px';
 			side.style.width = '360px';
 			side.style.maxWidth = '42vw';
@@ -1717,6 +2023,34 @@
 			side.appendChild(body);
 
 			document.body.appendChild(side);
+
+			// Position the effect popup next to the triggering fighter card (prefer the main instance).
+			const positionEffectPopupNearCard = function () {
+				const pad = 12;
+				const inst = pe && pe.mainInstanceId ? String(pe.mainInstanceId) : '';
+				if (!inst) return;
+				const key = 'card:' + inst;
+				const anchor = app.querySelector('[data-anim-key="' + key + '"]');
+				if (!(anchor instanceof Element)) return;
+				const r = anchor.getBoundingClientRect();
+				// place to the right of card; if not enough space, flip to left
+				const sw = side.offsetWidth || 360;
+				const sh = side.offsetHeight || 240;
+				let left = r.right + pad;
+				if (left + sw > window.innerWidth - pad) {
+					left = r.left - sw - pad;
+				}
+				left = Math.max(pad, Math.min(left, window.innerWidth - sw - pad));
+				let top = r.top;
+				top = Math.max(pad, Math.min(top, window.innerHeight - sh - pad));
+				// convert viewport coords → document coords
+				side.style.left = (left + window.scrollX) + 'px';
+				side.style.top = (top + window.scrollY) + 'px';
+			};
+
+			// Initial position + keep stuck to the card while scrolling.
+			positionEffectPopupNearCard();
+			// Do not follow scroll: keep the position fixed after initial placement.
 
 			ui._resolveTimer = window.setTimeout(function () {
 				ui._resolveTimer = null;
@@ -1848,6 +2182,14 @@
 			const t = e.target;
 			if (!(t instanceof Element)) return;
 
+			const zoneCard = t.closest('.battle-zone-card');
+			if (zoneCard && zoneCard instanceof HTMLElement) {
+				const cid = zoneCard.dataset.battleCardId;
+				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				if (d) showBattleZoneDetailModal(d);
+				return;
+			}
+
 			const cardBtn = t.closest('.battle-card');
 			if (cardBtn && cardBtn instanceof HTMLButtonElement && !cardBtn.disabled) {
 				const inst = cardBtn.dataset.instanceId || null;
@@ -1948,6 +2290,7 @@
 
 	(async function init() {
 		wireBattleLogModal();
+		installSurrenderIntercept();
 		try {
 			function applyBattleZoom() {
 				const appEl = document.getElementById('battle-app');

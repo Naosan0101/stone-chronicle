@@ -61,7 +61,7 @@ CREATE INDEX idx_user_collection_user ON user_collection(user_id);
 
 INSERT INTO card_definition (id, name, cost, base_power, attribute, image_file, ability_deploy_code, ability_passive_code, deploy_help, passive_help) VALUES
 (1, '策士', 0, 2, 'HUMAN', '策士.PNG', 'SAKUSHI', NULL, '相手デッキの上から1枚をレストゾーンへ（デッキがなければ不可）', NULL),
-(2, 'サムライ', 1, 3, 'HUMAN', 'サムライ.PNG', 'SAMURAI', NULL, '任意でストーン2消費。使用時、相手は手札から2枚レストへ', NULL),
+(2, 'サムライ', 0, 3, 'HUMAN', 'サムライ.PNG', 'SAMURAI', NULL, '任意でストーン2消費。使用時、相手は手札から2枚レストへ', NULL),
 (3, '工作員', 0, 1, 'HUMAN', '工作員.PNG', 'KOSAKUIN', NULL, '任意でストーン1消費。使用時、自分のレスト1枚と手札1枚を交換', NULL),
 (4, '賞金稼ぎ', 0, 1, 'HUMAN', '賞金稼ぎ.PNG', 'SHOKIN', NULL, 'レベルアップで強さが+2ではなく+3', NULL),
 (5, '剣闘士', 2, 5, 'HUMAN', '剣闘士.PNG', 'KENTOSHI', NULL, 'お互い手札から1枚ずつレストへ', NULL),
@@ -70,7 +70,7 @@ INSERT INTO card_definition (id, name, cost, base_power, attribute, image_file, 
 (8, '薬売り', 0, 2, 'HUMAN', '薬売り.PNG', NULL, 'KUSURI', NULL, '所持ストーン1つにつき相手ファイター強さ-1'),
 (9, '狩人', 1, 3, 'HUMAN', '狩人.PNG', 'KARYUDO', NULL, '相手手札からランダム1枚をデッキの一番上へ', NULL),
 (10, 'ドラゴンライダー', 2, 2, 'HUMAN', 'ドラゴンライダー.PNG', NULL, 'DRAGON_RIDER', NULL, '自分のレストにドラゴンがいれば強さ+4'),
-(11, '巫女', 0, 2, 'ELF', '巫女.PNG', 'MIKO', NULL, '次に自分が配置するファイター強さ+1', NULL),
+(11, '巫女', 0, 2, 'ELF', '巫女.PNG', 'MIKO', NULL, '次に自分がバトルゾーンに配置するファイターの強さに+1。', NULL),
 (12, 'アーチャー', 1, 3, 'ELF', 'アーチャー.PNG', NULL, 'ARCHER', NULL, '相手がドラゴン以外なら強さ+1'),
 (13, '妖精', 0, 0, 'ELF', '妖精.PNG', 'YOSEI', NULL, '次に配置するエルフなら強さ+4', NULL),
 (14, '風の魔人', 1, 4, 'ELF_UNDEAD', '風の魔人.PNG', 'KAZE_MAJIN', NULL, '相手はストーンを1つ捨てる', NULL),

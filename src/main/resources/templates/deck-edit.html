@@ -78,6 +78,15 @@
 							<option value="6">6</option>
 						</select>
 					</label>
+					<label class="deck-lib-field">コスト
+						<select id="lib-filter-cost" class="deck-lib-select">
+							<option value="" selected>すべて</option>
+							<option value="0">0</option>
+							<option value="1">1</option>
+							<option value="2">2</option>
+							<option value="3">3</option>
+						</select>
+					</label>
 					<label class="deck-lib-field">★
 						<select id="lib-filter-rarity" class="deck-lib-select">
 							<option value="" selected>すべて</option>
@@ -87,10 +96,10 @@
 							<option value="C">コモン</option>
 						</select>
 					</label>
-					<label class="deck-lib-field">並び替え（強さ）
+					<label class="deck-lib-field">並び替え（コスト）
 						<select id="lib-sort" class="deck-lib-select">
-							<option value="power_asc" selected>強さ 小→大</option>
-							<option value="power_desc">強さ 大→小</option>
+							<option value="cost_asc" selected>コスト 小→大</option>
+							<option value="cost_desc">コスト 大→小</option>
 						</select>
 					</label>
 				</div>
@@ -128,7 +137,7 @@
 	<span th:each="sid : ${selectedIds}" th:text="${sid}"></span>
 </div>
 
-<div id="deck-tooltip" class="deck-tooltip" hidden role="tooltip">
+<div id="deck-tooltip" class="deck-tooltip deck-edit-page-tooltip" hidden role="tooltip">
 	<div class="deck-tooltip__inner">
 		<p class="deck-tooltip__name"></p>
 		<dl class="deck-tooltip__stats">

@@ -31,6 +31,7 @@
 	const libSort = document.getElementById('lib-sort');
 	const libFilterAttr = document.getElementById('lib-filter-attr');
 	const libFilterPower = document.getElementById('lib-filter-power');
+	const libFilterCost = document.getElementById('lib-filter-cost');
 	const libFilterRarity = document.getElementById('lib-filter-rarity');
 	const tooltipEl = document.getElementById('deck-tooltip');
 	const tooltipName = tooltipEl.querySelector('.deck-tooltip__name');
@@ -340,6 +341,10 @@
 		return a.power - b.power;
 	}
 
+	function cmpCost(a, b) {
+		return a.cost - b.cost;
+	}
+
 	function cmpName(a, b) {
 		return a.name.localeCompare(b.name, 'ja');
 	}
@@ -357,6 +362,7 @@
 		const q = libSearch ? libSearch.value.trim() : '';
 		const attrF = libFilterAttr ? libFilterAttr.value : '';
 		const powF = libFilterPower ? libFilterPower.value : '';
+		const costF = libFilterCost ? libFilterCost.value : '';
 		const rarF = libFilterRarity ? libFilterRarity.value : '';
 		let list = seeds.filter(function (c) {
 			if (
@@ -372,18 +378,21 @@
 			}
 			if (attrF && !matchesTribeFilter(c.attribute, attrF)) return false;
 			if (powF !== '' && c.power !== parseInt(powF, 10)) return false;
+			if (costF !== '' && c.cost !== parseInt(costF, 10)) return false;
 			if (rarF && c.rarity !== rarF) return false;
 			return true;
 		});
-		const mode = libSort ? libSort.value : 'power_asc';
+		const mode = libSort ? libSort.value : 'cost_asc';
 		list = list.slice();
 		list.sort(function (a, b) {
 			let r;
-			if (mode === 'power_desc') {
-				r = cmpPower(b, a);
+			if (mode === 'cost_desc') {
+				r = cmpCost(b, a);
 			} else {
-				r = cmpPower(a, b);
+				r = cmpCost(a, b);
 			}
+			if (r !== 0) return r;
+			r = cmpPower(a, b);
 			if (r !== 0) return r;
 			return cmpName(a, b);
 		});
@@ -610,8 +619,9 @@
 			const hasSearch = libSearch && libSearch.value.trim();
 			const hasAttr = libFilterAttr && libFilterAttr.value;
 			const hasPow = libFilterPower && libFilterPower.value !== '';
+			const hasCost = libFilterCost && libFilterCost.value !== '';
 			const hasRar = libFilterRarity && libFilterRarity.value;
-			if (hasSearch || hasAttr || hasPow || hasRar) {
+			if (hasSearch || hasAttr || hasPow || hasCost || hasRar) {
 				const p = document.createElement('p');
 				p.className = 'muted deck-lib-empty-msg';
 				p.textContent = '表示条件に一致するカードがありません。';
@@ -689,6 +699,9 @@
 	}
 	if (libFilterPower) {
 		libFilterPower.addEventListener('change', onFilterChange);
+	}
+	if (libFilterCost) {
+		libFilterCost.addEventListener('change', onFilterChange);
 	}
 	if (libFilterRarity) {
 		libFilterRarity.addEventListener('change', onFilterChange);

@@ -36,8 +36,10 @@ public class LibraryService {
 			out.add(v);
 		}
 		out.sort(Comparator
-				.comparing((LibraryCardView v) -> CardAttributes.primarySegment(v.getAttribute()))
+				.comparingInt((LibraryCardView v) -> v.getCost())
+				.thenComparing((LibraryCardView v) -> CardAttributes.primarySegment(v.getAttribute()))
 				.thenComparing(LibraryCardView::getAttribute)
+				.thenComparingInt(LibraryCardView::getBasePower)
 				.thenComparing(LibraryCardView::getName));
 		return out;
 	}

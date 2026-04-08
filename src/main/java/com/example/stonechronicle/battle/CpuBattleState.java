@@ -22,9 +22,12 @@ public class CpuBattleState implements Serializable {
 	/** 巫女: 次に配置するファイター強さ+1 */
 	private int humanNextDeployBonus;
 	private int cpuNextDeployBonus;
-	/** 妖精: 次に配置するエルフなら +4 */
+	/** 妖精: 次に配置するエルフなら +3 */
 	private int humanNextElfOnlyBonus;
 	private int cpuNextElfOnlyBonus;
+	/** 隊長: 次に配置するファイターのコストぶん強化（重ねがけ可） */
+	private int humanNextDeployCostBonusTimes;
+	private int cpuNextDeployCostBonusTimes;
 	/** 科学者: 強さ入れ替え（次のターン終了まで） */
 	private boolean powerSwapActive;
 	/** 古竜: 次の相手ターン終了までの一時強化（自分のレストのエルフ枚数ぶん） */

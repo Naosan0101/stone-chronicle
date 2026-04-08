@@ -37,7 +37,7 @@ public class CpuBattleEngine {
 		st.setCpuTurnStarts(0);
 
 		st.setHumanDeck(buildShuffledInstances(humanDeckCardIds, rnd));
-		st.setCpuDeck(buildShuffledInstances(buildCpuDeckIds(rnd), rnd));
+		st.setCpuDeck(buildShuffledInstances(buildCpuDeckIds(cpuLevel, rnd, defs), rnd));
 
 		for (int i = 0; i < 4; i++) {
 			drawOne(st.getHumanDeck(), st.getHumanHand());
@@ -51,16 +51,125 @@ public class CpuBattleEngine {
 		return st;
 	}
 
-	private List<Short> buildCpuDeckIds(Random rnd) {
+	private static int clampInt(int n, int min, int max) {
+		return Math.max(min, Math.min(max, n));
+	}
+
+	private static double clampDouble(double n, double min, double max) {
+		return Math.max(min, Math.min(max, n));
+	}
+
+	private static int rarityRank(String rarity) {
+		if (rarity == null) return 0;
+		return switch (rarity.trim()) {
+			case "Reg" -> 3;
+			case "Ep" -> 2;
+			case "R" -> 1;
+			default -> 0; // C or unknown
+		};
+	}
+
+	private List<Short> buildCpuDeckIds(int cpuLevel, Random rnd, Map<Short, CardDefinition> defs) {
+		final int lvl = clampInt(cpuLevel, 1, 10);
+		final String[] coreTribes = new String[] {"HUMAN", "ELF", "UNDEAD", "DRAGON"};
+
 		List<Short> picked = new ArrayList<>();
 		Map<Short, Integer> cnt = new HashMap<>();
+		Map<String, Integer> tribeCount = new HashMap<>();
+
+		// Deck "theme" tribe. Higher levels will adhere to it more often, but not always.
+		final String theme = coreTribes[rnd.nextInt(coreTribes.length)];
+		// Convergence strength: how much we bias toward the (theme or currently dominant) tribe.
+		// Higher levels should converge much harder, but never become deterministic.
+		final double convergeBoost = clampDouble(0.55 + 0.40 * (lvl - 1), 0.55, 4.6);
+		// Rarity strength: higher levels more likely to pick high rarity.
+		final double rarityFactor = clampDouble(0.22 + 0.12 * (lvl - 1), 0.22, 1.3);
+
 		while (picked.size() < 8) {
-			short id = (short) (1 + rnd.nextInt(30));
-			if (cnt.getOrDefault(id, 0) >= 2) {
+			// Determine current dominant tribe in picked cards to encourage convergence.
+			String dominant = theme;
+			int best = -1;
+			for (String t : coreTribes) {
+				int c = tribeCount.getOrDefault(t, 0);
+				if (c > best) {
+					best = c;
+					dominant = t;
+				}
+			}
+
+			// Weighted pick from all card ids (1..30) with max 2 copies.
+			double totalW = 0.0;
+			double[] w = new double[31];
+			for (short id = 1; id <= 30; id++) {
+				if (cnt.getOrDefault(id, 0) >= 2) {
+					w[id] = 0.0;
+					continue;
+				}
+				CardDefinition d = defs != null ? defs.get(id) : null;
+				if (d == null) {
+					w[id] = 0.0;
+					continue;
+				}
+				double ww = 1.0;
+
+				// ① Tribe convergence: prefer theme & dominant tribe (but never exclusive).
+				boolean hasTheme = CardAttributes.hasAttribute(d, theme);
+				boolean hasDom = CardAttributes.hasAttribute(d, dominant);
+				// Dragons are intentionally harder to converge into (they are weaker overall),
+				// so reduce convergence pressure when the target tribe is DRAGON.
+				double themeMul = theme != null && theme.equals("DRAGON") ? 0.45 : 1.0;
+				double domMul = dominant != null && dominant.equals("DRAGON") ? 0.55 : 1.0;
+				if (hasTheme) ww *= (1.0 + convergeBoost * 0.70 * themeMul);
+				if (hasDom) ww *= (1.0 + convergeBoost * 1.15 * domMul);
+
+				// ② Rarity bias: higher level → higher rarity is more likely.
+				int rr = rarityRank(d.getRarity());
+				ww *= (1.0 + rr * rarityFactor);
+				// Extra push at higher rarities (keeps C possible but makes Reg/Ep noticeably more common at high lvl).
+				if (rr >= 2) ww *= (1.0 + 0.35 * rarityFactor);
+				if (rr >= 3) ww *= (1.0 + 0.55 * rarityFactor);
+
+				// Mild variety: avoid too many exact same id early.
+				int already = cnt.getOrDefault(id, 0);
+				if (already == 1) ww *= 0.72;
+
+				w[id] = ww;
+				totalW += ww;
+			}
+
+			if (totalW <= 0) {
+				// Fallback (shouldn't happen): uniform random.
+				short id = (short) (1 + rnd.nextInt(30));
+				if (cnt.getOrDefault(id, 0) >= 2) continue;
+				picked.add(id);
+				cnt.put(id, cnt.getOrDefault(id, 0) + 1);
 				continue;
 			}
-			picked.add(id);
-			cnt.put(id, cnt.getOrDefault(id, 0) + 1);
+
+			double r = rnd.nextDouble() * totalW;
+			short chosen = 1;
+			for (short id = 1; id <= 30; id++) {
+				double ww = w[id];
+				if (ww <= 0) continue;
+				r -= ww;
+				if (r <= 0) {
+					chosen = id;
+					break;
+				}
+			}
+
+			picked.add(chosen);
+			cnt.put(chosen, cnt.getOrDefault(chosen, 0) + 1);
+
+			CardDefinition cd = defs != null ? defs.get(chosen) : null;
+			if (cd != null) {
+				// Increment tribe counts for convergence. Composite attributes increment all matching core tribes.
+				for (String t : coreTribes) {
+					if (CardAttributes.hasAttribute(cd, t)) {
+						tribeCount.put(t, tribeCount.getOrDefault(t, 0) + 1);
+					}
+				}
+			}
 		}
 		return picked;
 	}
@@ -205,6 +314,8 @@ public class CpuBattleEngine {
 						st.setCpuNextDeployBonus(snap.getCpuNextDeployBonus());
 						st.setHumanNextElfOnlyBonus(snap.getHumanNextElfOnlyBonus());
 						st.setCpuNextElfOnlyBonus(snap.getCpuNextElfOnlyBonus());
+						st.setHumanNextDeployCostBonusTimes(snap.getHumanNextDeployCostBonusTimes());
+						st.setCpuNextDeployCostBonusTimes(snap.getCpuNextDeployCostBonusTimes());
 						st.setPowerSwapActive(snap.isPowerSwapActive());
 						st.setHumanKoryuBonus(snap.getHumanKoryuBonus());
 						st.setCpuKoryuBonus(snap.getCpuKoryuBonus());
@@ -265,6 +376,30 @@ public class CpuBattleEngine {
 					} else if ("KAGAKUSHA".equals(pc.getAbilityDeployCode())) {
 						st.setPowerSwapActive(true);
 						st.addLog("科学者: 強さを入れ替えた");
+					} else if ("MIKO".equals(pc.getAbilityDeployCode())) {
+						st.setHumanNextDeployBonus(st.getHumanNextDeployBonus() + 1);
+						st.addLog("巫女: 次の配置+1");
+					} else if ("YOSEI".equals(pc.getAbilityDeployCode())) {
+						st.setHumanNextElfOnlyBonus(st.getHumanNextElfOnlyBonus() + 3);
+						st.addLog("妖精: 次のエルフ配置+3");
+					} else if ("SHOKIN".equals(pc.getAbilityDeployCode())) {
+						st.setHumanNextDeployCostBonusTimes(st.getHumanNextDeployCostBonusTimes() + 1);
+						st.addLog("隊長: 次の配置はコストぶん強化");
+					} else if ("KINOKO".equals(pc.getAbilityDeployCode())) {
+						// ピクシー: ストーン1消費で「レストから1枚選んで手札へ」
+						if (!st.getHumanRest().isEmpty()) {
+							List<String> opts = new ArrayList<>();
+							for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
+							st.setPendingChoice(new PendingChoice(
+									ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+									"ピクシー（レストから1枚選択）",
+									true,
+									"KINOKO",
+									0,
+									opts
+							));
+							return;
+						}
 					} else if ("FUWAFUWA".equals(pc.getAbilityDeployCode())) {
 						if (st.getHumanBattle() != null) {
 							st.getHumanBattle().setReturnToHandOnKnock(true);
@@ -400,8 +535,20 @@ public class CpuBattleEngine {
 		ns.setHumansTurn(st.isHumansTurn());
 		ns.setHumanTurnStarts(st.getHumanTurnStarts());
 		ns.setCpuTurnStarts(st.getCpuTurnStarts());
+		ns.setPhase(st.getPhase());
+		ns.setPendingEffect(st.getPendingEffect());
+		ns.setPendingChoice(st.getPendingChoice());
 		ns.setHumanStones(st.getHumanStones());
 		ns.setCpuStones(st.getCpuStones());
+		ns.setHumanNextDeployBonus(st.getHumanNextDeployBonus());
+		ns.setCpuNextDeployBonus(st.getCpuNextDeployBonus());
+		ns.setHumanNextElfOnlyBonus(st.getHumanNextElfOnlyBonus());
+		ns.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus());
+		ns.setHumanNextDeployCostBonusTimes(st.getHumanNextDeployCostBonusTimes());
+		ns.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes());
+		ns.setPowerSwapActive(st.isPowerSwapActive());
+		ns.setHumanKoryuBonus(st.getHumanKoryuBonus());
+		ns.setCpuKoryuBonus(st.getCpuKoryuBonus());
 		ns.setLastMessage(st.getLastMessage());
 		ns.setGameOver(st.isGameOver());
 		ns.setHumanWon(st.isHumanWon());
@@ -452,11 +599,13 @@ public class CpuBattleEngine {
 			}
 			BattleCard main = simHand.get(deployHandIndex);
 			CardDefinition mainDef = defs.get(main.getCardId());
-			int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
-			deployBonus = levelUpRest * perRest + levelUpStones * 2;
+			deployBonus = levelUpRest * 2 + levelUpStones * 2;
 			deployBonus += st.getHumanNextDeployBonus();
 			if (st.getHumanNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
 				deployBonus += st.getHumanNextElfOnlyBonus();
+			}
+			if (st.getHumanNextDeployCostBonusTimes() > 0) {
+				deployBonus += mainDef.getCost() * st.getHumanNextDeployCostBonusTimes();
 			}
 			if (!canDeployWithHand(simHand, deployHandIndex, defs, deployBonus, st, true)) {
 				st.setLastMessage("配置条件（強さ・コスト）を満たせません");
@@ -492,6 +641,7 @@ public class CpuBattleEngine {
 			// 次回配置ボーナス消費
 			st.setHumanNextDeployBonus(0);
 			st.setHumanNextElfOnlyBonus(0);
+			st.setHumanNextDeployCostBonusTimes(0);
 			st.setHumanBattle(z);
 			applyDeployHuman(st, mainDef, defs);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
@@ -613,11 +763,13 @@ public class CpuBattleEngine {
 				st.setLastMessage("カード定義が見つかりません");
 				return;
 			}
-			int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
-			deployBonus = levelUpRest * perRest + levelUpStones * 2;
+			deployBonus = levelUpRest * 2 + levelUpStones * 2;
 			deployBonus += st.getHumanNextDeployBonus();
 			if (st.getHumanNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
 				deployBonus += st.getHumanNextElfOnlyBonus();
+			}
+			if (st.getHumanNextDeployCostBonusTimes() > 0) {
+				deployBonus += mainDef.getCost() * st.getHumanNextDeployCostBonusTimes();
 			}
 			cost = mainDef.getCost();
 			simHand.remove(simMain);
@@ -660,6 +812,14 @@ public class CpuBattleEngine {
 			// 強さ条件は「配置効果・常時効果」反映後に確定判定する（配置前の素の強さでは弾かない）
 		}
 
+		// 「能力後に相手以上になれない」確認でキャンセルした場合は、レベルアップ消費も含めて元に戻す必要がある。
+		// そのため、消費を確定適用する前（この時点）でスナップショットを取っておく。
+		if (simMain != null && mainDef != null) {
+			st.setConfirmAcceptLossSnapshot(copyState(st));
+		} else {
+			st.setConfirmAcceptLossSnapshot(null);
+		}
+
 		// ここから確定適用
 		st.setHumanStones(st.getHumanStones() - levelUpStones);
 		List<BattleCard> levelUpCards = new ArrayList<>();
@@ -688,9 +848,6 @@ public class CpuBattleEngine {
 		}
 
 		if (simMain != null && mainDef != null) {
-			// 「能力後に相手以上になれない」場合のキャンセル用スナップショット（オンライン対戦では確定まで相手に見せないための下地）
-			st.setConfirmAcceptLossSnapshot(copyState(st));
-
 			// 配置カードを実手札から取り出す
 			BattleCard main = removeByInstanceId(st.getHumanHand(), deployInstanceId);
 			if (main == null) {
@@ -721,6 +878,7 @@ public class CpuBattleEngine {
 			z.setTemporaryPowerBonus(deployBonus);
 			st.setHumanNextDeployBonus(0);
 			st.setHumanNextElfOnlyBonus(0);
+			st.setHumanNextDeployCostBonusTimes(0);
 			st.setHumanBattle(z);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
 			stagePendingDeployEffect(st, true, mainDef, z);
@@ -760,20 +918,18 @@ public class CpuBattleEngine {
 		return true;
 	}
 
-	private boolean canPayCostWithHand(List<BattleCard> hand, String mainInstanceId, Map<Short, CardDefinition> defs) {
-		if (mainInstanceId == null) return false;
-		BattleCard main = null;
-		for (BattleCard c : hand) {
-			if (mainInstanceId.equals(c.getInstanceId())) {
-				main = c;
-				break;
-			}
+	/**
+	 * CPU の配置コスト支払い: ストーンをできるだけ使い、足りない分を手札から払う（右端から）。
+	 * @return カードで払う枚数。支払不可のときは -1
+	 */
+	private int cpuDeployPayCardCount(int cost, int stonesAvailable, int handSizeIncludingMain) {
+		if (cost < 0) return -1;
+		int payStones = Math.min(cost, Math.max(0, stonesAvailable));
+		int payCards = cost - payStones;
+		if (handSizeIncludingMain - 1 < payCards) {
+			return -1;
 		}
-		if (main == null) return false;
-		CardDefinition d = defs.get(main.getCardId());
-		if (d == null) return false;
-		int cost = d.getCost();
-		return hand.size() - 1 >= cost;
+		return payCards;
 	}
 
 	private BattleCard copyCard(BattleCard c) {
@@ -813,6 +969,12 @@ public class CpuBattleEngine {
 		ns.setHumanTurnStarts(st.getHumanTurnStarts());
 		ns.setHumanStones(st.getHumanStones());
 		ns.setCpuStones(st.getCpuStones());
+		ns.setHumanNextDeployBonus(st.getHumanNextDeployBonus());
+		ns.setCpuNextDeployBonus(st.getCpuNextDeployBonus());
+		ns.setHumanNextElfOnlyBonus(st.getHumanNextElfOnlyBonus());
+		ns.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus());
+		ns.setHumanNextDeployCostBonusTimes(st.getHumanNextDeployCostBonusTimes());
+		ns.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes());
 		ns.setLastMessage(st.getLastMessage());
 		ns.setGameOver(st.isGameOver());
 		ns.setHumanWon(st.isHumanWon());
@@ -877,11 +1039,13 @@ public class CpuBattleEngine {
 							continue; // 配置カードをレベルアップで捨てることはできない
 						}
 
-						int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
-						int deployBonus = levelUpRest * perRest + levelUpStones * 2;
+						int deployBonus = levelUpRest * 2 + levelUpStones * 2;
 						deployBonus += st.getCpuNextDeployBonus();
 						if (st.getCpuNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
 							deployBonus += st.getCpuNextElfOnlyBonus();
+						}
+						if (st.getCpuNextDeployCostBonusTimes() > 0) {
+							deployBonus += mainDef.getCost() * st.getCpuNextDeployCostBonusTimes();
 						}
 
 						// シミュレーション：レベルアップ→配置→配置効果→常時計算（effectiveBattlePower）
@@ -900,16 +1064,19 @@ public class CpuBattleEngine {
 							}
 						}
 
-						if (!canPayCostWithHand(simSt.getCpuHand(), main.getInstanceId(), defs)) {
+						int cost = mainDef.getCost();
+						int payCards = cpuDeployPayCardCount(cost, simSt.getCpuStones(), simSt.getCpuHand().size());
+						if (payCards < 0) {
 							continue;
 						}
+						int payStones = cost - payCards;
+						simSt.setCpuStones(simSt.getCpuStones() - payStones);
 
 						// 配置カードを取り出す
 						BattleCard simMain = removeByInstanceId(simSt.getCpuHand(), main.getInstanceId());
 						if (simMain == null) continue;
-						int cost = mainDef.getCost();
 						List<BattleCard> paid = new ArrayList<>();
-						for (int i = 0; i < cost; i++) {
+						for (int i = 0; i < payCards; i++) {
 							if (simSt.getCpuHand().isEmpty()) break;
 							paid.add(simSt.getCpuHand().remove(simSt.getCpuHand().size() - 1));
 						}
@@ -929,10 +1096,18 @@ public class CpuBattleEngine {
 						}
 
 						if (hasOpp) {
-							// 相手をレストにできる中で「必要最低値の強さ」を選ぶ
+							// 相手をレストにできる中で、
+							// 1) まず「レベルアップ消費（捨て札/ストーン）」を最小化
+							// 2) 次にレベルアップで「できるだけストーンから消費」
+							// （配置コストは別途、ストーン優先・不足分は手札＝分割払い）
+							// 3) 最後に「必要最低値の強さ（cpuEff）」を選ぶ
 							int resource = levelUpRest + levelUpStones;
-							if (cpuEff < bestCpuEff
-									|| (cpuEff == bestCpuEff && resource < bestResource)) {
+							if (resource < bestResource
+									|| (resource == bestResource && (
+											(levelUpStones > bestLevelUpStones)
+											|| (levelUpStones == bestLevelUpStones && levelUpRest < bestLevelUpRest)
+											|| (levelUpStones == bestLevelUpStones && levelUpRest == bestLevelUpRest && cpuEff < bestCpuEff)
+									))) {
 								bestCpuEff = cpuEff;
 								bestResource = resource;
 								bestInstanceId = main.getInstanceId();
@@ -944,7 +1119,15 @@ public class CpuBattleEngine {
 						} else {
 							// 相手がいないときは従来通り「強くなる」配置を優先
 							int score = cpuEff - oppEff;
-							if (score > bestScore || (score == bestScore && cpuEff > bestCpuEff)) {
+							int resource = levelUpRest + levelUpStones;
+							if (resource < bestResource
+									|| (resource == bestResource && (
+											score > bestScore
+											|| (score == bestScore && cpuEff > bestCpuEff)
+											|| (score == bestScore && cpuEff == bestCpuEff && levelUpStones > bestLevelUpStones)
+											|| (score == bestScore && cpuEff == bestCpuEff && levelUpStones == bestLevelUpStones && levelUpRest < bestLevelUpRest)
+									))) {
+								bestResource = resource;
 								bestScore = score;
 								bestCpuEff = cpuEff;
 								bestInstanceId = main.getInstanceId();
@@ -980,14 +1163,23 @@ public class CpuBattleEngine {
 				st.addLog(b.toString());
 			}
 
-			if (canPayCostWithHand(st.getCpuHand(), bestInstanceId, defs)) {
-				BattleCard main = removeByInstanceId(st.getCpuHand(), bestInstanceId);
-				if (main != null) {
-					CardDefinition mainDef = defs.get(main.getCardId());
-					if (mainDef != null) {
-						int cost = mainDef.getCost();
+			CardDefinition bestDef = null;
+			for (BattleCard c : st.getCpuHand()) {
+				if (bestInstanceId.equals(c.getInstanceId())) {
+					bestDef = defs.get(c.getCardId());
+					break;
+				}
+			}
+			if (bestDef != null) {
+				int cost = bestDef.getCost();
+				int payCards = cpuDeployPayCardCount(cost, st.getCpuStones(), st.getCpuHand().size());
+				if (payCards >= 0) {
+					int payCostStones = cost - payCards;
+					BattleCard main = removeByInstanceId(st.getCpuHand(), bestInstanceId);
+					if (main != null) {
+						st.setCpuStones(st.getCpuStones() - payCostStones);
 						List<BattleCard> paid = new ArrayList<>();
-						for (int i = 0; i < cost; i++) {
+						for (int i = 0; i < payCards; i++) {
 							if (st.getCpuHand().isEmpty()) break;
 							paid.add(st.getCpuHand().remove(st.getCpuHand().size() - 1));
 						}
@@ -998,10 +1190,17 @@ public class CpuBattleEngine {
 						z.setTemporaryPowerBonus(bestDeployBonus);
 						st.setCpuNextDeployBonus(0);
 						st.setCpuNextElfOnlyBonus(0);
+						st.setCpuNextDeployCostBonusTimes(0);
 						st.setCpuBattle(z);
-						st.addLog("CPUは「" + mainDef.getName() + "」を配置した");
+						if (payCostStones > 0 && payCards > 0) {
+							st.addLog("CPUは「" + bestDef.getName() + "」を配置（コスト: ストーン" + payCostStones + "＋カード" + payCards + "）");
+						} else if (payCostStones > 0) {
+							st.addLog("CPUは「" + bestDef.getName() + "」を配置（コスト: ストーン" + payCostStones + "）");
+						} else {
+							st.addLog("CPUは「" + bestDef.getName() + "」を配置した");
+						}
 						deployed = true;
-						stagePendingDeployEffect(st, false, mainDef, z);
+						stagePendingDeployEffect(st, false, bestDef, z);
 					}
 				}
 			}
@@ -1012,14 +1211,12 @@ public class CpuBattleEngine {
 		}
 
 		if (!deployed) {
+			// CPU が「配置しない」を選んだ時点で、人間の勝利とする
 			st.addLog("CPUは配置しなかった");
-			resolveKnockAndDraw(st, false, defs);
-			resetTurnBuffs(st);
-			st.setHumansTurn(true);
-			st.setPhase(BattlePhase.HUMAN_INPUT);
-			// 人間のターン開始：ストーン付与（先攻1ターン目のみ獲得なし）
-			beginTurnGainStone(st, true);
-			st.setLastMessage("あなたのターン");
+			st.setGameOver(true);
+			st.setHumanWon(true);
+			st.setPhase(BattlePhase.GAME_OVER);
+			st.setLastMessage("勝利（CPUが配置しませんでした）");
 			return;
 		}
 	}
@@ -1218,20 +1415,7 @@ public class CpuBattleEngine {
 				}
 			}
 			case "KOSAKUIN" -> {
-				// ストーン不足 or 交換対象がないならポップアップ不要
-				if (st.getHumanStones() >= 1 && !st.getHumanRest().isEmpty() && !st.getHumanHand().isEmpty()) {
-					List<String> opts = new ArrayList<>();
-					for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
-					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
-					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"工作員",
-							true,
-							"KOSAKUIN",
-							1,
-							opts
-					));
-				}
+				// 用心棒（旧: 工作員）に変更されたため効果なし
 			}
 			case "KAGAKUSHA" -> {
 				if (st.getHumanStones() >= 1 && st.getHumanBattle() != null && st.getCpuBattle() != null) {
@@ -1251,24 +1435,36 @@ public class CpuBattleEngine {
 				}
 			}
 			case "MIKO" -> {
+				// 巫女: ストーン消費なしで、次回配置+1（任意選択なし）
 				st.setHumanNextDeployBonus(st.getHumanNextDeployBonus() + 1);
 				st.addLog("巫女: 次の配置+1");
 			}
 			case "YOSEI" -> {
-				st.setHumanNextElfOnlyBonus(st.getHumanNextElfOnlyBonus() + 4);
-				st.addLog("妖精: 次のエルフ配置+4");
+				if (st.getHumanStones() >= 1) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"妖精",
+							true,
+							"YOSEI",
+							1,
+							List.of()
+					));
+				}
+			}
+			case "SHOKIN" -> {
+				// 隊長: 次の配置はコストぶん強化（重ねがけ可）
+				st.setHumanNextDeployCostBonusTimes(st.getHumanNextDeployCostBonusTimes() + 1);
+				st.addLog("隊長: 次の配置はコストぶん強化");
 			}
 			case "KINOKO" -> {
-				if (!st.getHumanRest().isEmpty()) {
-					List<String> opts = new ArrayList<>();
-					for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
+				if (st.getHumanStones() >= 1 && !st.getHumanRest().isEmpty()) {
 					st.setPendingChoice(new PendingChoice(
-							ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
-							"ピクシー（レストから1枚選択）",
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"ピクシー",
 							true,
 							"KINOKO",
-							0,
-							opts
+							1,
+							List.of()
 					));
 				}
 			}
@@ -1462,16 +1658,7 @@ public class CpuBattleEngine {
 				st.setCpuStones(st.getCpuStones() + 2);
 			}
 			case "KOSAKUIN" -> {
-				// CPUは交換が得なら実行（簡易: 可能なら実行）
-				if (st.getCpuStones() >= 1 && !st.getCpuRest().isEmpty() && !st.getCpuHand().isEmpty()) {
-					st.setCpuStones(st.getCpuStones() - 1);
-					// 適当: restの最後とhandの最後を交換
-					BattleCard r = st.getCpuRest().remove(st.getCpuRest().size() - 1);
-					BattleCard h = st.getCpuHand().remove(st.getCpuHand().size() - 1);
-					st.getCpuRest().add(h);
-					st.getCpuHand().add(0, r);
-					st.addLog("CPU工作員: レストと手札を交換");
-				}
+				// 用心棒（旧: 工作員）に変更されたため効果なし
 			}
 			case "KAGAKUSHA" -> {
 				if (st.getCpuStones() >= 1 && st.getHumanBattle() != null && st.getCpuBattle() != null) {
@@ -1491,14 +1678,23 @@ public class CpuBattleEngine {
 				}
 			}
 			case "MIKO" -> {
+				// 巫女: ストーン消費なしで、次回配置+1
 				st.setCpuNextDeployBonus(st.getCpuNextDeployBonus() + 1);
 			}
 			case "YOSEI" -> {
-				st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + 4);
+				// CPU: ストーンがあれば使う（次のエルフ配置+3）
+				if (st.getCpuStones() >= 1) {
+					st.setCpuStones(st.getCpuStones() - 1);
+					st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + 3);
+				}
+			}
+			case "SHOKIN" -> {
+				st.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes() + 1);
 			}
 			case "KINOKO" -> {
-				if (!st.getCpuRest().isEmpty()) {
-					// 簡易: 最後の1枚を回収
+				// CPU: ストーンがあれば使って回収（簡易: 最後の1枚）
+				if (st.getCpuStones() >= 1 && !st.getCpuRest().isEmpty()) {
+					st.setCpuStones(st.getCpuStones() - 1);
 					BattleCard c = st.getCpuRest().remove(st.getCpuRest().size() - 1);
 					st.getCpuHand().add(0, c);
 				}

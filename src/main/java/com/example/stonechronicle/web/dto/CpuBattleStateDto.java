@@ -22,6 +22,7 @@ public record CpuBattleStateDto(
 		int cpuBattlePower,
 		int humanNextDeployBonus,
 		int humanNextElfOnlyBonus,
+		int humanNextDeployCostBonusTimes,
 		String lastMessage,
 		boolean gameOver,
 		boolean humanWon,

@@ -138,6 +138,7 @@ public class CpuBattleService {
 				cbPow,
 				st.getHumanNextDeployBonus(),
 				st.getHumanNextElfOnlyBonus(),
+				st.getHumanNextDeployCostBonusTimes(),
 				st.getLastMessage(),
 				st.isGameOver(),
 				st.isHumanWon(),

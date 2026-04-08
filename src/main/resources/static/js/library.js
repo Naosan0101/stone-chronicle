@@ -364,11 +364,12 @@
 	const grid = document.getElementById('library-all-grid');
 	const searchInput = document.getElementById('library-search');
 	const filterAttr = document.getElementById('library-filter-attr');
+	const filterCost = document.getElementById('library-filter-cost');
 	const filterPower = document.getElementById('library-filter-power');
 	const filterRarity = document.getElementById('library-filter-rarity');
 	const emptyMsg = document.getElementById('library-empty-msg');
 
-	if (grid && searchInput && filterAttr && filterPower && filterRarity) {
+	if (grid && searchInput && filterAttr && filterCost && filterPower && filterRarity) {
 		const ATTR_ORDER = { HUMAN: 0, ELF: 1, UNDEAD: 2, DRAGON: 3 };
 		const cards = Array.from(grid.children).filter(function (el) {
 			return el.classList && el.classList.contains('library-card');
@@ -397,6 +398,10 @@
 			return a.power - b.power;
 		}
 
+		function cmpCost(a, b) {
+			return a.cost - b.cost;
+		}
+
 		function cmpName(a, b) {
 			return a.name.localeCompare(b.name, 'ja');
 		}
@@ -413,18 +418,21 @@
 		function applyBrowser() {
 			const q = searchInput.value.trim();
 			const attrSel = filterAttr.value;
+			const costSel = filterCost.value;
 			const powerSel = filterPower.value;
 			const raritySel = filterRarity.value;
 			let items = cards.map(function (card) {
 				const btn = card.querySelector('.library-card__open');
 				const ds = btn ? btn.dataset : {};
 				const p = parseInt(ds.basePower, 10);
+				const c = parseInt(ds.cost, 10);
 				return {
 					card: card,
 					name: ds.name || '',
 					owned: ds.owned === 'true',
 					attribute: ds.attribute || '',
 					power: isNaN(p) ? 0 : p,
+					cost: isNaN(c) ? 0 : c,
 					rarity: (ds.rarity || 'C').trim(),
 					searchParts: [
 						ds.name,
@@ -440,12 +448,15 @@
 				if (q && !it.owned) return false;
 				if (!matchesCardTextSearch(q, it.searchParts)) return false;
 				if (attrSel && !matchesTribeFilter(it.attribute, attrSel)) return false;
+				if (costSel && String(it.cost) !== String(costSel)) return false;
 				if (powerSel && String(it.power) !== String(powerSel)) return false;
 				if (raritySel && it.rarity !== raritySel) return false;
 				return true;
 			});
 			items.sort(function (a, b) {
-				let r = cmpAttr(a, b);
+				let r = cmpCost(a, b);
+				if (r !== 0) return r;
+				r = cmpAttr(a, b);
 				if (r !== 0) return r;
 				r = cmpPower(a, b);
 				if (r !== 0) return r;
@@ -467,6 +478,7 @@
 
 		searchInput.addEventListener('input', applyBrowser);
 		filterAttr.addEventListener('change', applyBrowser);
+		filterCost.addEventListener('change', applyBrowser);
 		filterPower.addEventListener('change', applyBrowser);
 		filterRarity.addEventListener('change', applyBrowser);
 		applyBrowser();
