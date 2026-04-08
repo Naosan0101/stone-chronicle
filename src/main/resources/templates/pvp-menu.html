@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>対人戦 — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body class="page">
+<header class="topbar">
+	<h1 class="game-title">対人戦</h1>
+	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+</header>
+
+<p class="error" th:if="${error}" th:text="${error}"></p>
+
+<p class="muted" style="max-width:36rem">
+	ホストが部屋を作成し、表示されたURLをもう一人のプレイヤーに渡してください。相手が参加するとバトルが始まります。
+</p>
+
+<p th:if="${decks == null || decks.isEmpty()}" class="muted">
+	デッキがありません。先にデッキを8枚作成してください。
+</p>
+
+<form th:if="${decks != null && !decks.isEmpty()}" th:action="@{/battle/pvp/room}" method="post" class="stack panel" style="max-width:28rem">
+	<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+	<label>使うデッキ
+		<select name="deckId" required>
+			<option th:each="d : ${decks}" th:value="${d.id}" th:text="${d.name}">デッキ</option>
+		</select>
+	</label>
+	<button type="submit" class="btn btn--primary">対戦部屋を作成</button>
+</form>
+</body>
+</html>

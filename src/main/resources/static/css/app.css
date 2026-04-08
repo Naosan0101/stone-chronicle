@@ -180,6 +180,39 @@ body {
 .stack label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
 .stack input, .stack select { padding: 0.4rem 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: #0c0e14; color: var(--text); }
 
+.pvp-join-url-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+	max-width: 100%;
+}
+.pvp-join-url-row code {
+	flex: 1;
+	min-width: 0;
+	word-break: break-all;
+	font-size: 0.875rem;
+	line-height: 1.45;
+	padding: 0.5rem 0.65rem;
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.22);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.pvp-copy-url-btn {
+	flex-shrink: 0;
+	padding: 0.45rem;
+	min-width: 2.5rem;
+	min-height: 2.5rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+}
+.pvp-copy-url-btn svg {
+	display: block;
+	width: 1.25rem;
+	height: 1.25rem;
+}
+
 .muted { color: var(--muted); }
 .error { color: #ff8a8a; }
 .ok { color: #8df0a6; }

@@ -6,9 +6,11 @@ public record PendingChoiceDto(
 		String kind,
 		String prompt,
 		boolean forHuman,
+		boolean cpuSlotChooses,
 		String abilityDeployCode,
 		int stoneCost,
-		List<String> optionInstanceIds
+		List<String> optionInstanceIds,
+		boolean viewerMayRespond
 ) {
 }
 

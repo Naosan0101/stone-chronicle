@@ -86,6 +86,10 @@ public class CpuBattleService {
 		if (st == null) {
 			return null;
 		}
+		return stateDtoFromState(st);
+	}
+
+	public CpuBattleStateDto stateDtoFromState(CpuBattleState st) {
 		Map<Short, CardDefinition> defs = defs();
 		int hbPow = engine.effectiveBattlePower(st.getHumanBattle(), true, st, defs);
 		int cbPow = engine.effectiveBattlePower(st.getCpuBattle(), false, st, defs);
@@ -119,7 +123,9 @@ public class CpuBattleService {
 						}
 				));
 
+		var pc = st.getPendingChoice();
 		return new CpuBattleStateDto(
+				st.isPvp(),
 				st.getCpuLevel(),
 				st.isHumanGoesFirst(),
 				st.isHumansTurn(),
@@ -150,14 +156,16 @@ public class CpuBattleService {
 								st.getPendingEffect().getAbilityDeployCode()
 						)
 						: null,
-				st.getPendingChoice() != null
+				pc != null
 						? new com.example.stonechronicle.web.dto.PendingChoiceDto(
-								st.getPendingChoice().getKind() != null ? st.getPendingChoice().getKind().name() : null,
-								st.getPendingChoice().getPrompt(),
-								st.getPendingChoice().isForHuman(),
-								st.getPendingChoice().getAbilityDeployCode(),
-								st.getPendingChoice().getStoneCost(),
-								st.getPendingChoice().getOptionInstanceIds()
+								pc.getKind() != null ? pc.getKind().name() : null,
+								pc.getPrompt(),
+								pc.isForHuman(),
+								pc.isCpuSlotChooses(),
+								pc.getAbilityDeployCode(),
+								pc.getStoneCost(),
+								pc.getOptionInstanceIds(),
+								pc.isForHuman() && !pc.isCpuSlotChooses()
 						)
 						: null,
 				st.getEventLog(),

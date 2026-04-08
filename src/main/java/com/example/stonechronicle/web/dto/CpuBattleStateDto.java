@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public record CpuBattleStateDto(
+		boolean pvpMatch,
 		int cpuLevel,
 		boolean humanGoesFirst,
 		boolean humansTurn,

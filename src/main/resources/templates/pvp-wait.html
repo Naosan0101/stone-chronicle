@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>対戦待機 — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<meta name="stone_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
+</head>
+<body class="page">
+<header class="topbar">
+	<h1 class="game-title">相手の参加を待っています</h1>
+	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+</header>
+
+<section class="panel" style="max-width:36rem">
+	<p>次のURLを相手に送ってください。両方ともログインが必要です。</p>
+	<p class="muted" style="margin-bottom:0.35rem">参加用URL</p>
+	<div class="pvp-join-url-row">
+		<code id="pvp-join-url-preview"></code>
+		<button type="button" class="btn btn--ghost pvp-copy-url-btn" id="pvp-copy-join-url" aria-label="参加用URLをコピー" title="コピー">
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+				<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+			</svg>
+		</button>
+	</div>
+	<p class="muted" id="pvp-copy-feedback" aria-live="polite" style="min-height:1.25rem"></p>
+	<p><a class="btn btn--ghost" th:href="@{/battle/pvp/join/{id}(id=${matchId})}">参加ページを開く</a></p>
+	<p class="muted" id="pvp-wait-status">接続確認中…</p>
+</section>
+
+<script th:inline="javascript">
+(function () {
+	const matchId = /*[[${matchId}]]*/ '';
+	const contextPath = document.querySelector('meta[name="stone_context_path"]')?.getAttribute('content') || '';
+	const statusEl = document.getElementById('pvp-wait-status');
+	const copyBtn = document.getElementById('pvp-copy-join-url');
+	const copyFb = document.getElementById('pvp-copy-feedback');
+	const joinPath = contextPath + '/battle/pvp/join/' + encodeURIComponent(matchId);
+	const joinFullUrl = window.location.origin + joinPath;
+	const url = contextPath + '/battle/pvp/api/' + encodeURIComponent(matchId) + '/ready';
+	const previewEl = document.getElementById('pvp-join-url-preview');
+	if (previewEl) previewEl.textContent = joinFullUrl;
+
+	function copyJoinUrl() {
+		function ok() {
+			if (copyFb) {
+				copyFb.textContent = 'クリップボードにコピーしました';
+				window.setTimeout(function () { if (copyFb) copyFb.textContent = ''; }, 2500);
+			}
+		}
+		function fail() {
+			if (copyFb) copyFb.textContent = 'コピーに失敗しました。URLを手動で選択してください。';
+		}
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(joinFullUrl).then(ok).catch(function () {
+				// fallback
+				const ta = document.createElement('textarea');
+				ta.value = joinFullUrl;
+				ta.setAttribute('readonly', '');
+				ta.style.position = 'fixed';
+				ta.style.left = '-9999px';
+				document.body.appendChild(ta);
+				ta.select();
+				try {
+					if (document.execCommand('copy')) ok();
+					else fail();
+				} catch (e) {
+					fail();
+				}
+				document.body.removeChild(ta);
+			});
+		} else {
+			const ta = document.createElement('textarea');
+			ta.value = joinFullUrl;
+			ta.setAttribute('readonly', '');
+			ta.style.position = 'fixed';
+			ta.style.left = '-9999px';
+			document.body.appendChild(ta);
+			ta.select();
+			try {
+				if (document.execCommand('copy')) ok();
+				else fail();
+			} catch (e) {
+				fail();
+			}
+			document.body.removeChild(ta);
+		}
+	}
+
+	if (copyBtn) copyBtn.addEventListener('click', copyJoinUrl);
+
+	function tick() {
+		fetch(url, { headers: { 'Accept': 'application/json' } })
+			.then(function (r) { return r.json(); })
+			.then(function (j) {
+				if (j && j.started) {
+					window.location.href = contextPath + '/battle/pvp/play/' + encodeURIComponent(matchId);
+					return;
+				}
+				if (statusEl) statusEl.textContent = '相手の参加を待っています…';
+			})
+			.catch(function () {
+				if (statusEl) statusEl.textContent = '接続に失敗しました。再読み込みしてください。';
+			});
+	}
+	setInterval(tick, 2000);
+	tick();
+})();
+</script>
+</body>
+</html>

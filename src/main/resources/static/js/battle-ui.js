@@ -14,6 +14,9 @@
 	const contextPath = document.querySelector('meta[name="stone_context_path"]')?.getAttribute('content') || '';
 	const plateFbFull = document.querySelector('meta[name="card_plate_fallback"]')?.getAttribute('content') || '';
 	const dataFbFull = document.querySelector('meta[name="card_data_fallback"]')?.getAttribute('content') || '';
+	const pvpMatchId = document.querySelector('meta[name="pvp_match_id"]')?.getAttribute('content') || '';
+	const battleIsPvp = pvpMatchId.length > 0;
+	const battleApiBase = battleIsPvp ? (contextPath + '/battle/pvp/api/' + encodeURIComponent(pvpMatchId)) : null;
 
 	// Intercept surrender immediately (before async init finishes).
 	const surrenderGuard = {
@@ -45,7 +48,8 @@
 		_luPrevPowerInstanceId: null,
 		_luPrevPower: null,
 		_resultShown: false,
-		_resultModalEl: null
+		_resultModalEl: null,
+		_pvpPollTimer: null
 	};
 
 	function teardownResultModal() {
@@ -106,7 +110,8 @@
 		const raw = (el.getAttribute('action') || '').trim();
 		// Ignore query/hash and tolerate absolute/relative/context-prefixed URLs.
 		const action = raw.split('#')[0].split('?')[0];
-		return action.indexOf('/battle/cpu/surrender') >= 0;
+		if (action.indexOf('/battle/cpu/surrender') >= 0) return true;
+		return /\/battle\/pvp\/api\/[^/]+\/surrender$/.test(action);
 	}
 
 	function installSurrenderIntercept() {
@@ -406,7 +411,9 @@
 	}
 
 	async function fetchState() {
-		const res = await fetch(contextPath + '/battle/cpu/state', { headers: { 'Accept': 'application/json' } });
+		const url = battleIsPvp ? (battleApiBase + '/state') : (contextPath + '/battle/cpu/state');
+		const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+		if (res.status === 204) return null;
 		if (!res.ok) throw new Error('state fetch failed: ' + res.status);
 		return await res.json();
 	}
@@ -414,7 +421,8 @@
 	async function commitAction(payload) {
 		const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
 		if (csrfToken) headers[csrfHeader] = csrfToken;
-		const res = await fetch(contextPath + '/battle/cpu/commit', { method: 'POST', headers, body: JSON.stringify(payload) });
+		const url = battleIsPvp ? (battleApiBase + '/commit') : (contextPath + '/battle/cpu/commit');
+		const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
 		if (!res.ok) throw new Error('commit failed: ' + res.status);
 		return await res.json();
 	}
@@ -430,7 +438,8 @@
 	async function resolvePending() {
 		const headers = { 'Accept': 'application/json' };
 		if (csrfToken) headers[csrfHeader] = csrfToken;
-		const res = await fetch(contextPath + '/battle/cpu/resolve', { method: 'POST', headers });
+		const url = battleIsPvp ? (battleApiBase + '/resolve') : (contextPath + '/battle/cpu/resolve');
+		const res = await fetch(url, { method: 'POST', headers });
 		if (!res.ok) throw new Error('resolve failed: ' + res.status);
 		return await res.json();
 	}
@@ -1552,7 +1561,8 @@
 	async function sendChoice(payload) {
 		const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
 		if (csrfToken) headers[csrfHeader] = csrfToken;
-		const res = await fetch(contextPath + '/battle/cpu/choice', { method: 'POST', headers, body: JSON.stringify(payload) });
+		const url = battleIsPvp ? (battleApiBase + '/choice') : (contextPath + '/battle/cpu/choice');
+		const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
 		if (!res.ok) throw new Error('choice failed: ' + res.status);
 		return await res.json();
 	}
@@ -1560,7 +1570,8 @@
 	function showChoiceModal(st) {
 		const pc = st.pendingChoice;
 		if (!pc) return;
-		if (!pc.forHuman) return;
+		const may = pc.viewerMayRespond !== undefined && pc.viewerMayRespond !== null ? pc.viewerMayRespond : pc.forHuman;
+		if (!may) return;
 
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
@@ -1833,13 +1844,13 @@
 		hideBattleDeckTooltip();
 
 		// Top "thinking" banner (fixed-ish inside app)
-		if (st.phase === 'CPU_THINKING') {
+		if (st.phase === 'CPU_THINKING' || st.phase === 'OPPONENT_TURN') {
 			const b = el('div', 'panel', null);
 			b.style.position = 'sticky';
 			b.style.top = '0';
 			b.style.zIndex = '20';
 			b.style.marginBottom = '10px';
-			b.textContent = '考え中...';
+			b.textContent = st.phase === 'OPPONENT_TURN' ? '相手の操作中…' : '考え中...';
 			app.appendChild(b);
 		}
 
@@ -1945,8 +1956,8 @@
 		// game over modal (only once per battle end)
 		maybeShowGameOverModal(st);
 
-		// CPU random think (3-7s) → cpu-step
-		if (st.phase === 'CPU_THINKING' && !st.gameOver) {
+		// CPU random think (3-7s) → cpu-step（対人戦では使わない）
+		if (st.phase === 'CPU_THINKING' && !st.gameOver && !st.pvpMatch) {
 			if (ui._cpuThinkTimer == null) {
 				const waitMs = 3000 + Math.floor(Math.random() * 4000);
 				ui._cpuThinkTimer = window.setTimeout(function () {
@@ -1965,6 +1976,20 @@
 		} else if (ui._cpuThinkTimer != null) {
 			clearTimeout(ui._cpuThinkTimer);
 			ui._cpuThinkTimer = null;
+		}
+
+		if (st.pvpMatch && st.phase === 'OPPONENT_TURN' && !st.gameOver) {
+			if (ui._pvpPollTimer == null) {
+				ui._pvpPollTimer = window.setInterval(function () {
+					rerenderWithFreshState().catch(function (e) {
+						// eslint-disable-next-line no-console
+						console.error(e);
+					});
+				}, 2000);
+			}
+		} else if (ui._pvpPollTimer != null) {
+			clearInterval(ui._pvpPollTimer);
+			ui._pvpPollTimer = null;
 		}
 
 		// Show effect for 3 seconds, then resolve

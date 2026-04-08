@@ -1,0 +1,19 @@
+[Unit]
+Description=Stone Chronicle (Spring Boot)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=stoneapp
+Group=stoneapp
+WorkingDirectory=/opt/stone-chronicle
+Environment=SPRING_PROFILES_ACTIVE=production
+# 1GB VPS 向けにヒープを抑えめに（余裕があれば 512m や 768m に）
+ExecStart=/usr/bin/java -Xms128m -Xmx384m -jar /opt/stone-chronicle/stone-chronicle.jar
+Restart=on-failure
+RestartSec=10
+EnvironmentFile=-/etc/stone-chronicle.env
+
+[Install]
+WantedBy=multi-user.target
