@@ -730,6 +730,19 @@ body {
 	color: var(--text);
 }
 
+/* バトル：カード詳細ツールチップ上部にカードを中央表示 */
+.page--battle .battle-card-tooltip__preview {
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	margin: 0.1rem 0 0.15rem;
+}
+.page--battle .battle-layered--tip {
+	width: clamp(140px, 14vw, 190px);
+	display: block;
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
 /* バトル：デッキ枚数ポップアップ（例: 5枚） */
 .battle-deck-tooltip {
 	position: fixed;
@@ -747,6 +760,17 @@ body {
 	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.52);
 	pointer-events: none;
 	white-space: nowrap;
+}
+
+/* バトル画面：枠（セル）が横に伸びすぎないよう、表示領域を固定幅に寄せる */
+.page--battle #battle-app {
+	/* ベース幅は固定、ウィンドウに合わせて zoom で縮小する */
+	width: fit-content;
+	max-width: none;
+	min-width: 980px;
+	margin: 0 auto;
+	padding: 0 0.5rem;
+	zoom: var(--battle-zoom, 1);
 }
 
 .page--battle .battle-row {
@@ -833,7 +857,14 @@ body {
 	cursor: default;
 	opacity: 0.72;
 }
-.hand { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: flex-end; }
+.hand {
+	display: flex;
+	flex-wrap: nowrap; /* 手札は必ず横並び（改行しない） */
+	gap: 0.35rem;
+	align-items: flex-end;
+	/* スクロールではなく、枠（レイアウト）側を横に伸ばす */
+	overflow: visible;
+}
 .hand img { width: clamp(110px, 11vw, 156px); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
 /* 相手の裏向き手札：コンパクト表示 */
 .page--battle .hand.hand--opp-backs {
@@ -903,34 +934,34 @@ body {
 	margin: 0.5rem 0;
 }
 .page--battle .battle-band--opp .battle-band__inner {
+	/* デッキ／レストは固定幅、手札のみ必要に応じて横に伸びる */
+	--battle-side-col-w: 10.5rem;
 	display: grid;
-	grid-template-columns: minmax(4.5rem, 1fr) minmax(11rem, 2.4fr) minmax(4.5rem, 1fr);
-	grid-template-rows: auto 1fr;
+	/* 中央列は内容に合わせつつ、足りないときは全体幅まで伸ばす */
+	grid-template-columns: var(--battle-side-col-w) minmax(max-content, 1fr) var(--battle-side-col-w);
+	grid-template-rows: 1fr;
 	gap: 0.3rem 0.45rem;
-	align-items: start;
-}
-.page--battle .battle-band--opp .battle-band__stone--opp-top {
-	grid-column: 2;
-	grid-row: 1;
-	justify-self: center;
-	text-align: center;
-	max-width: 100%;
-	padding: 0.1rem 0.35rem;
-	background: rgba(58, 98, 216, 0.12);
-	border: 1px solid rgba(74, 125, 255, 0.28);
-	border-radius: 8px;
+	/* 同じ行の中でセルのタテを揃える */
+	align-items: stretch;
+	justify-content: start;
+	width: 100%;
 }
 .page--battle .battle-band--opp .battle-cell--opp-deck {
 	grid-column: 1;
-	grid-row: 2;
+	grid-row: 1;
+	display: flex;
+	flex-direction: column;
+	width: var(--battle-side-col-w);
 }
 .page--battle .battle-band--opp .battle-cell--opp-hand {
 	grid-column: 2;
-	grid-row: 2;
+	grid-row: 1;
+	min-width: 0;
 }
 .page--battle .battle-band--opp .battle-cell--opp-rest {
 	grid-column: 3;
-	grid-row: 2;
+	grid-row: 1;
+	width: var(--battle-side-col-w);
 }
 .page--battle .battle-band__stone-title {
 	margin: 0;
@@ -956,18 +987,70 @@ body {
 	line-height: 1.2;
 }
 
+/* 相手手札セル：右側にストーン所持数を入れ込む */
+.page--battle .battle-opp-hand-row {
+	display: flex;
+	flex-wrap: nowrap; /* 手札が折り返さないように */
+	align-items: flex-end;
+	justify-content: flex-start;
+	gap: 0.4rem 0.5rem;
+	min-width: 0;
+}
+.page--battle .battle-opp-hand-row > .hand {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 100%;
+}
+.page--battle .battle-opp-hand-row__stones {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	align-items: center;
+	text-align: center;
+	padding: 0.25rem 0.4rem;
+	min-width: 3rem;
+	background: rgba(58, 98, 216, 0.12);
+	border: 1px solid rgba(74, 125, 255, 0.32);
+	border-radius: 10px;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.page--battle .battle-opp-hand-row__stones-label {
+	display: block;
+	font-size: 0.6rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: rgba(160, 190, 255, 0.92);
+	line-height: 1.2;
+}
+.page--battle .battle-opp-hand-row__stones-value {
+	display: block;
+	margin-top: 0.08rem;
+	font-size: 1.05rem;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: var(--text);
+	line-height: 1.15;
+}
+
 /* 自分帯：レスト｜手札（枠内上部にストーン）｜デッキ */
 .page--battle .battle-band--you .battle-band__inner {
+	/* デッキ／レストは固定幅、手札のみ必要に応じて横に伸びる */
+	--battle-side-col-w: 10.5rem;
 	display: grid;
 	/* 第3列：やや小さめのデッキ山が収まる最小幅 */
-	grid-template-columns: minmax(4.5rem, 1fr) minmax(11rem, 2.4fr) minmax(10.5rem, 1fr);
+	grid-template-columns: var(--battle-side-col-w) minmax(max-content, 1fr) var(--battle-side-col-w);
 	grid-template-rows: auto;
 	gap: 0.3rem 0.45rem;
 	align-items: stretch;
+	justify-content: start;
+	width: 100%;
 }
 .page--battle .battle-band--you .battle-cell--you-rest {
 	grid-column: 1;
 	grid-row: 1;
+	width: var(--battle-side-col-w);
 }
 .page--battle .battle-band--you .battle-cell--you-hand {
 	grid-column: 2;
@@ -1001,6 +1084,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
+	width: var(--battle-side-col-w);
 }
 .page--battle .battle-cell--you-deck .deck-stack--visual {
 	margin-top: 0.1rem;
@@ -1178,6 +1262,8 @@ body {
 .page--battle .battle-zones-wrap {
 	position: relative;
 	min-width: 0;
+	/* 手札幅に合わせて全体が広がったとき、ゾーン枠も同じ横幅に追従 */
+	width: 100%;
 }
 .page--battle .battle-zones-stack {
 	display: flex;
@@ -1391,10 +1477,18 @@ body {
 	color: #c42e2e !important;
 	text-shadow: 0 0 8px rgba(255, 90, 90, 0.35);
 }
-.page--battle .battle-control__decide-wrap {
-	flex: 0 0 auto;
+.page--battle .battle-control__cancel-external {
+	white-space: nowrap;
+	padding: 0.48rem 1.05rem;
+	font-size: 0.98rem;
+	line-height: 1.3;
+}
+.page--battle .battle-control__footer {
 	display: flex;
-	align-items: flex-end;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+	margin-top: 0.85rem;
 }
 .page--battle .battle-control__decide-external {
 	white-space: nowrap;
@@ -1535,8 +1629,9 @@ body {
 	--cf-ability-bottom: 2.8%;
 	--cf-ability-height: 35%;
 	--cf-ability-pad-x: 7%;
-	--cf-ability-body: 4.5cqi;
-	--cf-ability-head: 5.6cqi;
+	/* 効果テキスト：全ページでほんの少し大きく */
+	--cf-ability-body: 5cqi;
+	--cf-ability-head: 6cqi;
 }
 .card-face__layer {
 	position: absolute;

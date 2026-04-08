@@ -89,9 +89,12 @@
 	const battleTipName = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__name') : null;
 	const battleTipAttr = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__attr') : null;
 	const battleTipAbility = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__ability') : null;
+	const battleTipPreview = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__preview') : null;
 	const deckTipEl = document.getElementById('battle-deck-tooltip');
+	let lastDefsForTooltip = null;
 
 	function hideBattleCardTooltip() {
+		if (battleTipPreview) battleTipPreview.textContent = '';
 		if (battleTipEl) battleTipEl.hidden = true;
 	}
 
@@ -194,6 +197,16 @@
 	function showBattleCardTooltipFromDataset(host, clientX, clientY) {
 		if (!battleTipEl || !battleTipName || !battleTipAttr || !battleTipAbility) return;
 		hideBattleDeckTooltip();
+		if (battleTipPreview) {
+			battleTipPreview.textContent = '';
+			const cid = host.dataset.battleCardId;
+			if (cid && lastDefsForTooltip) {
+				const def = resolveCardDef(lastDefsForTooltip, cid);
+				if (def) {
+					battleTipPreview.appendChild(buildBattleCardFaceShell(def, 'tip'));
+				}
+			}
+		}
 		battleTipName.textContent = host.dataset.battleName || '';
 		battleTipAttr.textContent = host.dataset.battleAttr || '—';
 		fillBattleTooltipAbility(battleTipAbility, host.dataset.battleAbility || '');
@@ -204,6 +217,7 @@
 	function applyBattleCardTipData(el, d) {
 		if (!el || !d) return;
 		el.dataset.battleTip = '1';
+		el.dataset.battleCardId = String(d.id != null ? d.id : '');
 		el.dataset.battleName = d.name || '';
 		el.dataset.battleAttr = formatBattleCardAttr(d);
 		el.dataset.battleAbility = battleCardAbilityTooltipText(d);
@@ -1005,20 +1019,26 @@
 
 		panel.appendChild(body);
 
+		const cancel = el('button', 'btn btn--ghost battle-control__cancel-external', 'キャンセル');
+		cancel.type = 'button';
+		cancel.dataset.action = 'cancel_levelup';
+
 		const decide = el('button', 'btn btn--primary battle-control__decide-external', '決定');
 		decide.type = 'button';
 		decide.dataset.action = 'decide';
 
 		const cluster = el('div', 'battle-control-overlay__cluster');
+		const footer = el('div', 'battle-control__footer');
+		footer.appendChild(cancel);
+		footer.appendChild(decide);
+		panel.appendChild(footer);
 		cluster.appendChild(panel);
-		const decideWrap = el('div', 'battle-control__decide-wrap');
-		decideWrap.appendChild(decide);
-		cluster.appendChild(decideWrap);
 
 		return cluster;
 	}
 
 	function render(st) {
+		lastDefsForTooltip = st.defs || null;
 		app.innerHTML = '';
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
@@ -1028,10 +1048,6 @@
 		const oppTop = el('section', 'battle-row battle-row--opp battle-band battle-band--opp');
 		{
 			const inner = el('div', 'battle-band__inner');
-			const stoneStrip = el('div', 'battle-band__stone battle-band__stone--opp-top');
-			stoneStrip.appendChild(el('h3', 'battle-band__stone-title', '相手ストーン'));
-			stoneStrip.appendChild(el('p', 'battle-band__stone-count', String(st.cpuStones)));
-			inner.appendChild(stoneStrip);
 
 			const cellDeck = el('div', 'battle-cell battle-cell--compact battle-cell--opp-deck');
 			cellDeck.appendChild(renderDeckStackVisual(st.cpuDeck.length, '相手デッキ'));
@@ -1039,7 +1055,14 @@
 
 			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
 			cellHand.appendChild(el('h3', '', '相手の手札'));
-			cellHand.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true }));
+			const oppHandRow = el('div', 'battle-opp-hand-row');
+			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true }));
+			const oppStonesInline = el('div', 'battle-opp-hand-row__stones');
+			oppStonesInline.setAttribute('aria-label', '相手ストーン所持数 ' + String(st.cpuStones));
+			oppStonesInline.appendChild(el('span', 'battle-opp-hand-row__stones-label', 'ストーン'));
+			oppStonesInline.appendChild(el('span', 'battle-opp-hand-row__stones-value', String(st.cpuStones)));
+			oppHandRow.appendChild(oppStonesInline);
+			cellHand.appendChild(oppHandRow);
 			inner.appendChild(cellHand);
 
 			const cellRest = el('div', 'battle-cell battle-cell--compact battle-cell--opp-rest');
@@ -1259,6 +1282,12 @@
 						});
 						return;
 					}
+
+					if (action === 'cancel_levelup') {
+						cancelLevelUpInProgress();
+						rerenderWithFreshState();
+						return;
+					}
 				}
 				rerenderWithFreshState();
 				return;
@@ -1278,8 +1307,19 @@
 	(async function init() {
 		wireBattleLogModal();
 		try {
+			function applyBattleZoom() {
+				const appEl = document.getElementById('battle-app');
+				if (!appEl) return;
+				const base = 980; // CSS の #battle-app 幅と揃える
+				// 画面に収まるよう縮小のみ（拡大はしない）
+				const z = Math.max(0.72, Math.min(1, window.innerWidth / (base + 24)));
+				appEl.style.setProperty('--battle-zoom', String(z));
+			}
+
 			document.addEventListener('scroll', hideBattleCardTooltip, true);
 			document.addEventListener('scroll', hideBattleDeckTooltip, true);
+			window.addEventListener('resize', applyBattleZoom);
+			applyBattleZoom();
 			const st = await fetchState();
 			render(st);
 			attachHandlers();
