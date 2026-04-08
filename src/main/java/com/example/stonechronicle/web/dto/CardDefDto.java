@@ -8,6 +8,9 @@ public record CardDefDto(
 		short cost,
 		short basePower,
 		String attribute,
+		/** C / R / Ep / Reg（ライブラリの card-face と同じ） */
+		String rarity,
+		String rarityLabel,
 		String imageFile,
 		String abilityDeployCode,
 		String attributeLabelJa,

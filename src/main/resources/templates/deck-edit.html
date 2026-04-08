@@ -40,14 +40,14 @@
 
 	<div class="deck-panels deck-panels--stack">
 		<section class="panel deck-panel deck-panel--slots">
-			<h2>デッキ（8枚・左クリックで戻す）</h2>
+			<h2>デッキ（8枚・ダブルクリックで戻す）</h2>
 			<div id="deck-zone" class="card-pool card-pool--deck" data-max="8"></div>
 			<p id="deck-count" class="muted">0 / 8</p>
 			<button type="submit" id="complete-btn" class="btn btn--primary" style="display:none">完了</button>
 		</section>
 		<section class="panel deck-panel deck-panel--library">
 			<div class="deck-lib-toolbar">
-				<h2 class="deck-lib-toolbar__title">ライブラリ（左クリックでデッキへ）</h2>
+				<h2 class="deck-lib-toolbar__title">ライブラリ（ダブルクリックでデッキへ）</h2>
 				<div class="deck-lib-toolbar__controls">
 					<label class="deck-lib-field">名前検索
 						<input type="search" id="lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名の一部"/>
@@ -113,7 +113,9 @@
 	     th:data-attribute-label="${c.attributeLabelJa}"
 	     th:data-power="${c.basePower}"
 	     th:data-cost="${c.cost}"
-	     th:attr="data-ability=${c.libraryAbilityText},data-attr-pipe=${c.attributeLabelPipe}"></div>
+	     th:data-ability="${c.libraryAbilityText != null ? c.libraryAbilityText : ''}"
+	     th:data-canonical-line="${c.canonicalAbilityLine != null ? c.canonicalAbilityLine : ''}"
+	     th:data-attr-pipe="${c.attributeLabelPipe != null ? c.attributeLabelPipe : ''}"></div>
 </div>
 <div id="selected-seed" style="display:none">
 	<span th:each="sid : ${selectedIds}" th:text="${sid}"></span>
@@ -132,15 +134,35 @@
 	</div>
 </div>
 
-<div id="preview" class="modal" hidden>
-	<div class="modal__box">
-		<button type="button" class="modal__close" onclick="document.getElementById('preview').hidden=true">×</button>
-		<div id="preview-face" class="preview-face"></div>
-		<img id="preview-img" alt=""/>
+<div id="library-detail-modal" class="library-detail-modal" hidden>
+	<div class="library-detail-modal__panel" role="dialog" aria-modal="true" aria-label="カード詳細">
+		<button type="button" class="library-detail-modal__close" data-library-detail-close aria-label="閉じる">×</button>
+		<div id="library-detail-art" class="library-detail-modal__art-wrap">
+			<div class="card-face card-face--layered" id="library-modal-card-face">
+				<div class="card-face__stack" aria-hidden="true">
+					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base" th:src="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
+<!--					<img id="lib-modal-layer-portrait" class="card-face__layer-img card-face__layer-img--portrait" alt="" hidden/>-->
+					<img id="lib-modal-layer-bar" class="card-face__layer-img card-face__layer-img--bar" alt="" hidden/>
+					<img id="lib-modal-layer-frame" class="card-face__layer-img card-face__layer-img--frame" th:src="|${contextPath != null ? contextPath : ''}${cardDataUrl}|" alt="" fetchpriority="high" onerror="this.hidden=true; this.removeAttribute('src');"/>
+				</div>
+				<div class="card-face__layer card-face__datum">
+					<span id="lib-modal-cost" class="card-face__cost"></span>
+					<span id="lib-modal-power" class="card-face__power"></span>
+					<span id="lib-modal-name" class="card-face__name"></span>
+					<span id="lib-modal-attr" class="card-face__attr-label"></span>
+					<span id="lib-modal-rarity" class="card-face__rarity"></span>
+				</div>
+				<div class="card-face__layer card-face__narrative">
+					<div id="lib-modal-ability" class="card-face__ability"></div>
+				</div>
+				<div id="lib-modal-spark" class="card-spark" hidden aria-hidden="true"></div>
+			</div>
+		</div>
 	</div>
 </div>
 
 <script th:src="@{/js/card-spark.js}"></script>
+<script th:src="@{/js/card-face-layer.js}"></script>
 <script th:src="@{/js/deck-edit.js}"></script>
 </body>
 </html>

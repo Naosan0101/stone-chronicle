@@ -155,7 +155,7 @@
 			return [{ h: '', b: '効果なし。' }];
 		}
 		let s = line.startsWith('・') ? line.slice(1) : line;
-		if (s.indexOf('/効果なし。') !== -1) {
+		if (s.indexOf('/効果なし。') !== -1 || s.indexOf('/能力なし。') !== -1) {
 			return [{ h: '', b: '効果なし。' }];
 		}
 		let idx = s.indexOf('/配置：');

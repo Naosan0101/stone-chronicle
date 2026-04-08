@@ -14,9 +14,18 @@
 	const deckCount = document.getElementById('deck-count');
 	const completeBtn = document.getElementById('complete-btn');
 	const cardIdsInput = document.getElementById('cardIds');
-	const preview = document.getElementById('preview');
-	const previewImg = document.getElementById('preview-img');
-	const previewFace = document.getElementById('preview-face');
+	const detailModal = document.getElementById('library-detail-modal');
+	const detailArtWrap = document.getElementById('library-detail-art');
+	const modalLayerBase = document.getElementById('lib-modal-layer-base');
+	const modalLayerPortrait = document.getElementById('lib-modal-layer-portrait');
+	const modalLayerBar = document.getElementById('lib-modal-layer-bar');
+	const modalLayerFrame = document.getElementById('lib-modal-layer-frame');
+	const modalCost = document.getElementById('lib-modal-cost');
+	const modalPower = document.getElementById('lib-modal-power');
+	const modalName = document.getElementById('lib-modal-name');
+	const modalAttr = document.getElementById('lib-modal-attr');
+	const modalRarity = document.getElementById('lib-modal-rarity');
+	const modalAbility = document.getElementById('lib-modal-ability');
 	const libSearch = document.getElementById('lib-search');
 	const libSort = document.getElementById('lib-sort');
 	const libFilterAttr = document.getElementById('lib-filter-attr');
@@ -30,6 +39,194 @@
 	const tooltipAbility = tooltipEl.querySelector('.deck-tooltip__ability');
 
 	const ATTR_LABEL = { HUMAN: '人間', ELF: 'エルフ', UNDEAD: 'アンデッド', DRAGON: 'ドラゴン' };
+
+	function hideBrokenImg(img) {
+		if (!img) return;
+		img.setAttribute('hidden', '');
+		img.removeAttribute('src');
+	}
+
+	function applyOnceImgFallback(img, fallbackSrc) {
+		if (!img) return;
+		if (img.dataset && img.dataset.fallbackWired === 'true') return;
+		if (img.dataset) img.dataset.fallbackWired = 'true';
+		function handleError() {
+			if (fallbackSrc && img.dataset && img.dataset.fallbackTried !== 'true') {
+				img.dataset.fallbackTried = 'true';
+				img.src = fallbackSrc;
+				return;
+			}
+			hideBrokenImg(img);
+		}
+		img.addEventListener('error', handleError);
+		function crushIfAlreadyBroken() {
+			try {
+				if (img.complete && img.naturalWidth === 0) {
+					handleError();
+				}
+			} catch (e) {
+				// noop
+			}
+		}
+		crushIfAlreadyBroken();
+		setTimeout(crushIfAlreadyBroken, 0);
+		setTimeout(crushIfAlreadyBroken, 250);
+	}
+
+	function buildAbilityBlocksFromCanonical(line) {
+		if (!line) {
+			return [{ h: '', b: '効果なし。' }];
+		}
+		let s = line.startsWith('・') ? line.slice(1) : line;
+		if (s.indexOf('/効果なし。') !== -1 || s.indexOf('/能力なし。') !== -1) {
+			return [{ h: '', b: '効果なし。' }];
+		}
+		let idx = s.indexOf('/配置：');
+		if (idx >= 0) {
+			return [{ h: '〈配置〉', b: s.slice(idx + '/配置：'.length) }];
+		}
+		idx = s.indexOf('/配置:');
+		if (idx >= 0) {
+			return [{ h: '〈配置〉', b: s.slice(idx + '/配置:'.length) }];
+		}
+		idx = s.indexOf('/常時：');
+		if (idx >= 0) {
+			return [{ h: '〈常時〉', b: s.slice(idx + '/常時：'.length) }];
+		}
+		idx = s.indexOf('/常時:');
+		if (idx >= 0) {
+			return [{ h: '〈常時〉', b: s.slice(idx + '/常時:'.length) }];
+		}
+		return [{ h: '', b: s }];
+	}
+
+	function closeCardDetailModal() {
+		hideTooltip();
+		if (!detailModal) return;
+		const modalSpark = document.getElementById('lib-modal-spark');
+		if (modalSpark) {
+			modalSpark.hidden = true;
+			modalSpark.classList.remove('is-on', 'card-spark--continuous', 'spark--R', 'spark--Ep', 'spark--Reg');
+			modalSpark.textContent = '';
+		}
+		detailModal.hidden = true;
+		document.body.style.overflow = '';
+	}
+
+	function openCardDetailModal(c) {
+		hideTooltip();
+		if (!detailModal || !modalCost || !modalAbility) return;
+
+		const rarity = (c.rarity || 'C').trim();
+		const rarityLabel = (c.rarityLabel || rarity || 'C').trim();
+		const modalFaceRoot = document.getElementById('library-modal-card-face');
+		const modalSpark = document.getElementById('lib-modal-spark');
+
+		if (modalFaceRoot) {
+			modalFaceRoot.classList.remove('card-face--rarity-C', 'card-face--rarity-R', 'card-face--rarity-Ep', 'card-face--rarity-Reg');
+			modalFaceRoot.classList.add('card-face--rarity-' + rarity);
+		}
+		if (modalRarity) {
+			modalRarity.textContent = rarityLabel;
+		}
+
+		if (modalCost) {
+			modalCost.textContent = c.cost != null && c.cost !== '' ? String(c.cost) : '';
+			const cn = parseInt(c.cost, 10);
+			modalCost.className = 'card-face__cost';
+			if (cn === 1) modalCost.classList.add('card-face__cost--digit-1');
+			if (cn === 2) modalCost.classList.add('card-face__cost--digit-2');
+		}
+		if (modalPower) {
+			modalPower.textContent = c.power != null && c.power !== '' ? String(c.power) : '';
+			const pn = parseInt(c.power, 10);
+			modalPower.className = 'card-face__power';
+			if (pn === 4) modalPower.classList.add('card-face__power--digit-4');
+		}
+		if (modalName) modalName.textContent = c.name || '';
+
+		if (modalAttr) {
+			const pipe = (c.attrPipe || '').trim();
+			let lines = pipe ? pipe.split('|').filter(Boolean) : [];
+			if (lines.length <= 1) {
+				const code = (c.attribute || '').trim();
+				if (code.indexOf('_') !== -1) {
+					lines = code.split('_').map(function (seg) {
+						return ATTR_LABEL[seg] || seg;
+					}).filter(Boolean);
+				}
+			}
+			if (lines.length > 1) {
+				modalAttr.className = 'card-face__attr-label card-face__attr-label--compound';
+				modalAttr.innerHTML = '';
+				lines.forEach(function (ln) {
+					const s = document.createElement('span');
+					s.className = 'card-face__attr-line';
+					s.textContent = ln;
+					modalAttr.appendChild(s);
+				});
+			} else {
+				modalAttr.className = 'card-face__attr-label';
+				modalAttr.textContent = c.attributeLabelJa || ATTR_LABEL[c.attribute] || c.attribute || '';
+			}
+		}
+
+		modalAbility.innerHTML = '';
+		buildAbilityBlocksFromCanonical(c.canonicalLine).forEach(function (bl) {
+			if (bl.h) {
+				const ph = document.createElement('p');
+				ph.className = 'card-face__ability-head';
+				ph.textContent = bl.h;
+				modalAbility.appendChild(ph);
+			}
+			const pb = document.createElement('p');
+			pb.className = 'card-face__ability-body';
+			pb.textContent = bl.b;
+			modalAbility.appendChild(pb);
+		});
+
+		if (detailArtWrap) {
+			detailArtWrap.classList.remove('library-detail-modal__art-wrap--locked');
+		}
+
+		if (modalLayerBase) {
+			applyOnceImgFallback(modalLayerBase, plateFbFull);
+			modalLayerBase.removeAttribute('hidden');
+			modalLayerBase.src = staticUrl(c.layerBase) || plateFbFull;
+		}
+		if (modalLayerPortrait) {
+			applyOnceImgFallback(modalLayerPortrait, '');
+			const pu = staticUrl(c.layerPortrait);
+			if (pu) {
+				modalLayerPortrait.removeAttribute('hidden');
+				modalLayerPortrait.src = pu;
+			} else {
+				hideBrokenImg(modalLayerPortrait);
+			}
+		}
+		if (modalLayerBar) {
+			applyOnceImgFallback(modalLayerBar, '');
+			const bu = staticUrl(c.layerBar);
+			if (bu) {
+				modalLayerBar.removeAttribute('hidden');
+				modalLayerBar.src = bu;
+			} else {
+				hideBrokenImg(modalLayerBar);
+			}
+		}
+		if (modalLayerFrame) {
+			applyOnceImgFallback(modalLayerFrame, dataFbFull);
+			modalLayerFrame.removeAttribute('hidden');
+			modalLayerFrame.src = staticUrl(c.layerFrame) || dataFbFull;
+		}
+
+		detailModal.hidden = false;
+		document.body.style.overflow = 'hidden';
+
+		if (modalSpark && typeof fillContinuousCardSpark === 'function') {
+			fillContinuousCardSpark(modalSpark, rarity);
+		}
+	}
 
 	function applyContinuousSparkToFaceRoot(faceRoot, rarityCode) {
 		if (!faceRoot || typeof fillContinuousCardSpark !== 'function') return;
@@ -67,6 +264,26 @@
 		return ATTR_LABEL[code] || code;
 	}
 
+	/** デッキへの追加／デッキからの削除はダブルクリック。キーボードは約0.5秒以内に2回 Enter または Space */
+	function bindDeckDoubleAction(el, handler) {
+		let lastKeyTs = 0;
+		el.addEventListener('dblclick', function (e) {
+			e.preventDefault();
+			handler();
+		});
+		el.addEventListener('keydown', function (ev) {
+			if (ev.key !== 'Enter' && ev.key !== ' ') return;
+			ev.preventDefault();
+			const now = Date.now();
+			if (lastKeyTs && now - lastKeyTs < 520) {
+				lastKeyTs = 0;
+				handler();
+			} else {
+				lastKeyTs = now;
+			}
+		});
+	}
+
 	const seeds = Array.from(document.querySelectorAll('#lib-seed .seed')).map(function (el) {
 		const p = parseInt(el.dataset.power, 10);
 		const cost = parseInt(el.dataset.cost, 10);
@@ -89,7 +306,9 @@
 			})(),
 			power: isNaN(p) ? 0 : p,
 			cost: isNaN(cost) ? 0 : cost,
-			ability: el.dataset.ability || ''
+			ability: el.dataset.ability || '',
+			canonicalLine: el.dataset.canonicalLine || '',
+			attrPipe: el.dataset.attrPipe || ''
 		};
 	}).filter(function (c) { return c.qty > 0 && !isNaN(c.id); });
 
@@ -149,126 +368,36 @@
 		return list;
 	}
 
-	function elSpan(cls, text) {
-		const s = document.createElement('span');
-		s.className = cls;
-		s.textContent = text != null ? String(text) : '';
-		return s;
-	}
-
 	function buildMiniLayered(c) {
-		const face = document.createElement('div');
-		face.className = 'card-face card-face--layered card-face--compact card-face--mini-deck';
-		if (c.attribute) {
-			face.classList.add('card-face--attr-' + c.attribute);
+		if (typeof buildLibraryCardFace !== 'function') {
+			const ph = document.createElement('div');
+			ph.className = 'mini-card__no-art';
+			ph.textContent = (c.name || '?').slice(0, 1);
+			return ph;
 		}
-		const rar = (c.rarity || 'C').trim();
-		if (rar === 'R' || rar === 'Ep' || rar === 'Reg' || rar === 'C') {
-			face.classList.add('card-face--rarity-' + rar);
-		}
-		const stack = document.createElement('div');
-		stack.className = 'card-face__stack';
-		stack.setAttribute('aria-hidden', 'true');
-
-		function pushLayer(classSuffix, url, fallback) {
-			const im = document.createElement('img');
-			im.className = 'card-face__layer-img card-face__layer-img--' + classSuffix;
-			im.alt = '';
-			im.src = staticUrl(url) || fallback || '';
-			stack.appendChild(im);
-		}
-
-		pushLayer('base', c.layerBase, plateFbFull);
-		// イラスト層は card-face フラグメントと同様、素材整備後に有効化
-		// if (c.layerPortrait) {
-		// 	pushLayer('portrait', c.layerPortrait, '');
-		// }
-		pushLayer('bar', c.layerBar, '');
-		pushLayer('frame', c.layerFrame, dataFbFull);
-
-		face.appendChild(stack);
-
-		const datum = document.createElement('div');
-		datum.className = 'card-face__layer card-face__datum';
-		const costCls =
-			'card-face__cost' +
-			(c.cost === 1 ? ' card-face__cost--digit-1' : '') +
-			(c.cost === 2 ? ' card-face__cost--digit-2' : '');
-		datum.appendChild(elSpan(costCls, String(c.cost)));
-		datum.appendChild(elSpan('card-face__power' + (c.power === 4 ? ' card-face__power--digit-4' : ''), String(c.power)));
-		datum.appendChild(elSpan('card-face__name', c.name || ''));
-		const attrLines = c.attrLines && c.attrLines.length ? c.attrLines : (c.attributeLabelJa ? [c.attributeLabelJa] : []);
-		const attrWrap = document.createElement('span');
-		attrWrap.className = 'card-face__attr-label' + (attrLines.length > 1 ? ' card-face__attr-label--compound' : '');
-		attrLines.forEach(function (ln) {
-			attrWrap.appendChild(elSpan('card-face__attr-line', ln));
-		});
-		datum.appendChild(attrWrap);
-		face.appendChild(datum);
-
-		const spark = document.createElement('div');
-		spark.className = 'card-spark';
-		spark.setAttribute('aria-hidden', 'true');
-		face.appendChild(spark);
-
-		return face;
-	}
-
-	function buildPreviewLayered(c) {
-		const face = document.createElement('div');
-		face.className = 'card-face card-face--layered';
-		if (c.attribute) {
-			face.classList.add('card-face--attr-' + c.attribute);
-		}
-		const rarP = (c.rarity || 'C').trim();
-		if (rarP === 'R' || rarP === 'Ep' || rarP === 'Reg' || rarP === 'C') {
-			face.classList.add('card-face--rarity-' + rarP);
-		}
-		const stack = document.createElement('div');
-		stack.className = 'card-face__stack';
-		stack.setAttribute('aria-hidden', 'true');
-
-		function pushLayer(classSuffix, url, fallback) {
-			const im = document.createElement('img');
-			im.className = 'card-face__layer-img card-face__layer-img--' + classSuffix;
-			im.alt = '';
-			im.src = staticUrl(url) || fallback || '';
-			stack.appendChild(im);
-		}
-
-		pushLayer('base', c.layerBase, plateFbFull);
-		// イラスト層は card-face フラグメントと同様、素材整備後に有効化
-		// if (c.layerPortrait) {
-		// 	pushLayer('portrait', c.layerPortrait, '');
-		// }
-		pushLayer('bar', c.layerBar, '');
-		pushLayer('frame', c.layerFrame, dataFbFull);
-
-		face.appendChild(stack);
-
-		const datum = document.createElement('div');
-		datum.className = 'card-face__layer card-face__datum';
-		const costCls =
-			'card-face__cost' +
-			(c.cost === 1 ? ' card-face__cost--digit-1' : '') +
-			(c.cost === 2 ? ' card-face__cost--digit-2' : '');
-		datum.appendChild(elSpan(costCls, String(c.cost)));
-		datum.appendChild(elSpan('card-face__power' + (c.power === 4 ? ' card-face__power--digit-4' : ''), String(c.power)));
-		datum.appendChild(elSpan('card-face__name', c.name || ''));
-		const attrLines = c.attrLines && c.attrLines.length ? c.attrLines : (c.attributeLabelJa ? [c.attributeLabelJa] : []);
-		const attrWrap = document.createElement('span');
-		attrWrap.className = 'card-face__attr-label' + (attrLines.length > 1 ? ' card-face__attr-label--compound' : '');
-		attrLines.forEach(function (ln) {
-			attrWrap.appendChild(elSpan('card-face__attr-line', ln));
-		});
-		datum.appendChild(attrWrap);
-		face.appendChild(datum);
-
-		const sparkP = document.createElement('div');
-		sparkP.className = 'card-spark';
-		sparkP.setAttribute('aria-hidden', 'true');
-		face.appendChild(sparkP);
-
+		const face = buildLibraryCardFace(
+			{
+				layerBase: c.layerBase,
+				layerBar: c.layerBar,
+				layerFrame: c.layerFrame,
+				attribute: c.attribute,
+				rarity: c.rarity,
+				rarityLabel: c.rarityLabel || c.rarity || 'C',
+				cost: c.cost,
+				power: c.power,
+				name: c.name,
+				attrLines: c.attrLines,
+				attributeLabelJa: c.attributeLabelJa,
+				ability: c.ability
+			},
+			{
+				contextPath: contextPath,
+				plateFallback: plateFbFull,
+				dataFallback: dataFbFull,
+				extraRootClasses: 'card-face--mini-deck'
+			}
+		);
+		wireLibraryCardFaceImages(face, plateFbFull, dataFbFull);
 		return face;
 	}
 
@@ -303,31 +432,7 @@
 	function bindPreview(el, c) {
 		el.addEventListener('contextmenu', function (e) {
 			e.preventDefault();
-			if (previewFace) previewFace.innerHTML = '';
-
-			if (c.layerBase || c.layerBar || c.layerFrame || c.layerPortrait) {
-				if (previewImg) {
-					previewImg.setAttribute('hidden', '');
-					previewImg.removeAttribute('src');
-					previewImg.alt = '';
-				}
-				if (previewFace) {
-					previewFace.appendChild(buildPreviewLayered(c));
-					applyContinuousSparkToFaceRoot(previewFace.querySelector('.card-face--layered'), c.rarity);
-				}
-			} else {
-				const bigArt = c.img;
-				if (bigArt && previewImg) {
-					previewImg.removeAttribute('hidden');
-					previewImg.src = bigArt;
-					previewImg.alt = c.name;
-				} else if (previewImg) {
-					previewImg.removeAttribute('src');
-					previewImg.setAttribute('hidden', '');
-					previewImg.alt = '';
-				}
-			}
-			preview.hidden = false;
+			openCardDetailModal(c);
 		});
 	}
 
@@ -405,46 +510,37 @@
 	function refreshLib() {
 		libZone.innerHTML = '';
 		hideTooltip();
-		if (deckZone.querySelectorAll('.mini-card').length >= 8) {
-			return;
-		}
 		const list = sortedLibraryList();
 		let added = 0;
 		list.forEach(function (c) {
 			const cap = maxPerForId(c.id);
 			const inDeck = countInDeck(c.id);
-			if (inDeck >= cap) return;
 			const el = document.createElement('button');
 			el.type = 'button';
-			el.className = 'mini-card mini-card--lib';
+			el.className = 'mini-card mini-card--lib' + (inDeck > 0 ? ' mini-card--in-deck' : '');
 			el.dataset.id = String(c.id);
-			el.setAttribute('aria-label', c.name + '（強さ' + c.power + '・×' + c.qty + '）をデッキへ');
+			const inDeckHint = inDeck > 0 ? '。デッキに' + inDeck + '枚使用中' : '';
+			el.setAttribute('aria-label', c.name + '（強さ' + c.power + '・×' + c.qty + inDeckHint + '）をダブルクリックでデッキへ');
 			appendLibCardFace(el, c);
 			wireSparkOnMiniCardHost(el, c);
 			bindPreview(el, c);
 			bindCardTooltip(el, c);
-			el.addEventListener('click', function () {
+			bindDeckDoubleAction(el, function () {
 				if (!canAddToDeck(c.id, cap)) return;
 				const copy = document.createElement('div');
 				copy.className = 'mini-card mini-card--deck';
 				copy.dataset.id = String(c.id);
 				copy.setAttribute('role', 'button');
 				copy.setAttribute('tabindex', '0');
-				copy.setAttribute('aria-label', c.name + 'をデッキから戻す');
+				copy.setAttribute('aria-label', c.name + 'をダブルクリックでデッキから戻す');
 				appendCardImage(copy, c);
 				wireSparkOnMiniCardHost(copy, c);
 				bindPreview(copy, c);
 				bindCardTooltip(copy, c);
-				copy.addEventListener('click', function () {
+				bindDeckDoubleAction(copy, function () {
 					copy.remove();
 					refreshLib();
 					update();
-				});
-				copy.addEventListener('keydown', function (ev) {
-					if (ev.key === 'Enter' || ev.key === ' ') {
-						ev.preventDefault();
-						copy.click();
-					}
 				});
 				deckZone.appendChild(copy);
 				refreshLib();
@@ -486,21 +582,15 @@
 			copy.dataset.id = String(id);
 			copy.setAttribute('role', 'button');
 			copy.setAttribute('tabindex', '0');
-			copy.setAttribute('aria-label', c.name + 'をデッキから戻す');
+			copy.setAttribute('aria-label', c.name + 'をダブルクリックでデッキから戻す');
 			appendCardImage(copy, c);
 			wireSparkOnMiniCardHost(copy, c);
 			bindPreview(copy, c);
 			bindCardTooltip(copy, c);
-			copy.addEventListener('click', function () {
+			bindDeckDoubleAction(copy, function () {
 				copy.remove();
 				refreshLib();
 				update();
-			});
-			copy.addEventListener('keydown', function (ev) {
-				if (ev.key === 'Enter' || ev.key === ' ') {
-					ev.preventDefault();
-					copy.click();
-				}
 			});
 			deckZone.appendChild(copy);
 		});
@@ -528,6 +618,18 @@
 
 	document.addEventListener('scroll', hideTooltip, true);
 	window.addEventListener('blur', hideTooltip);
+
+	if (detailModal) {
+		detailModal.addEventListener('click', function (e) {
+			if (e.target === detailModal) closeCardDetailModal();
+		});
+		detailModal.querySelectorAll('[data-library-detail-close]').forEach(function (el) {
+			el.addEventListener('click', closeCardDetailModal);
+		});
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape' && detailModal && !detailModal.hidden) closeCardDetailModal();
+		});
+	}
 
 	bootstrapDeck();
 	refreshLib();

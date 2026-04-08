@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/** カード面の能力表示用（〈配置〉／〈常時〉＋本文） */
+/** カード面の効果表示用（〈配置〉／〈常時〉＋本文） */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

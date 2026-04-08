@@ -2,9 +2,25 @@
 	const app = document.getElementById('battle-app');
 	if (!app) return;
 
+	const battleLogModal = document.getElementById('battle-log-modal');
+	const battleLogList = document.getElementById('battle-log-list');
+	const battleLogOpenBtn = document.getElementById('battle-log-open');
+	const battleLogCloseBtn = document.getElementById('battle-log-close');
+	let lastEventLog = [];
+
 	const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
 	const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
 	const cardBack = document.querySelector('meta[name="card_back"]')?.getAttribute('content') || '';
+	const contextPath = document.querySelector('meta[name="stone_context_path"]')?.getAttribute('content') || '';
+	const plateFbFull = document.querySelector('meta[name="card_plate_fallback"]')?.getAttribute('content') || '';
+	const dataFbFull = document.querySelector('meta[name="card_data_fallback"]')?.getAttribute('content') || '';
+
+	function absUrl(path) {
+		if (path == null || path === '') return '';
+		const p = String(path);
+		if (p.startsWith('http://') || p.startsWith('https://')) return p;
+		return contextPath + p;
+	}
 
 	// UI state (server state is fetched separately)
 	const ui = {
@@ -14,12 +30,167 @@
 		pay: { stones: 0, cardInstanceIds: [] }
 	};
 
-	function imgUrl(imageFile) {
-		return '/images/cards/' + encodeURIComponent(imageFile);
+	/** CardDefDto → card-face-layer.js（ライブラリと同一テンプレート） */
+	function buildBattleCardFaceShell(d, variant) {
+		if (typeof buildLibraryCardFace !== 'function') {
+			const err = document.createElement('p');
+			err.className = 'muted';
+			err.textContent = 'カード表示用スクリプトの読み込みに失敗しています。';
+			return err;
+		}
+		const face = buildLibraryCardFace(d, {
+			contextPath: contextPath,
+			plateFallback: plateFbFull,
+			dataFallback: dataFbFull,
+			extraRootClasses: 'battle-layered battle-layered--' + variant
+		});
+		wireLibraryCardFaceImages(face, plateFbFull, dataFbFull);
+		applyLibraryCardFaceSpark(face, d.rarity);
+		return wrapLibraryCardInner(face);
+	}
+
+	/** ライブラリグリッドの library-card と同じ内側ラッパ（枠・はみ出し抑制） */
+	function wrapLibraryCardInner(face) {
+		const shell = document.createElement('div');
+		shell.className = 'library-card__inner';
+		shell.appendChild(face);
+		return shell;
+	}
+
+	/**
+	 * fragments/library-card.html と同じ階層: library-card__open > library-card__inner（内側は既に inner）
+	 * バトルゾーンのツールチップ用に外側は .battle-zone-card と兼用
+	 */
+	function wrapLibraryCardOpenChrome(inner) {
+		const open = document.createElement('div');
+		open.className = 'library-card__open library-card__open--battle';
+		open.appendChild(inner);
+		return open;
+	}
+
+	/** JSON の defs キーが数値/文字列どちらでも解決 */
+	function resolveCardDef(defs, cardId) {
+		if (defs == null || cardId == null) return null;
+		if (defs[cardId] != null) return defs[cardId];
+		const n = Number(cardId);
+		if (!Number.isNaN(n) && defs[n] != null) return defs[n];
+		const s = String(cardId);
+		if (defs[s] != null) return defs[s];
+		return null;
+	}
+
+	const battleTipEl = document.getElementById('battle-card-tooltip');
+	const battleTipName = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__name') : null;
+	const battleTipAttr = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__attr') : null;
+	const battleTipAbility = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__ability') : null;
+
+	function hideBattleCardTooltip() {
+		if (battleTipEl) battleTipEl.hidden = true;
+	}
+
+	function formatBattleCardAttr(d) {
+		if (!d) return '—';
+		if (d.attributeLabelLines && d.attributeLabelLines.length) {
+			return d.attributeLabelLines.join('／');
+		}
+		return d.attributeLabelJa || d.attribute || '—';
+	}
+
+	function battleCardAbilityTooltipText(d) {
+		if (!d || !d.abilityBlocks || !d.abilityBlocks.length) {
+			return '効果なし。';
+		}
+		const chunks = [];
+		d.abilityBlocks.forEach(function (b) {
+			const h = b.headline != null ? String(b.headline).trim() : '';
+			let body = b.body != null ? String(b.body) : '';
+			body = body.replace(/能力なし。/g, '効果なし。');
+			if (h) chunks.push(h);
+			chunks.push(body || '—');
+		});
+		return chunks.join('\n');
+	}
+
+	function fillBattleTooltipAbility(el, raw) {
+		if (!el) return;
+		el.textContent = '';
+		const text = raw == null || raw === '' ? '—' : raw;
+		if (text === '—') {
+			el.textContent = '—';
+			return;
+		}
+		const nl = text.indexOf('\n');
+		const head = nl >= 0 ? text.slice(0, nl) : text;
+		const rest = nl >= 0 ? text.slice(nl + 1) : '';
+		if (head === '〈配置〉' || head === '〈常時〉') {
+			const tag = document.createElement('span');
+			tag.className = 'deck-tooltip__ability-tag';
+			tag.textContent = head;
+			el.appendChild(tag);
+			if (rest) {
+				el.appendChild(document.createElement('br'));
+				const desc = document.createElement('span');
+				desc.className = 'deck-tooltip__ability-desc';
+				desc.textContent = rest;
+				el.appendChild(desc);
+			}
+			return;
+		}
+		el.textContent = text;
+	}
+
+	function positionBattleCardTooltip(clientX, clientY) {
+		if (!battleTipEl) return;
+		const pad = 12;
+		const tw = battleTipEl.offsetWidth;
+		const th = battleTipEl.offsetHeight;
+		let x = clientX + pad;
+		let y = clientY + pad;
+		if (x + tw > window.innerWidth - pad) {
+			x = Math.max(pad, clientX - tw - pad);
+		}
+		if (y + th > window.innerHeight - pad) {
+			y = Math.max(pad, window.innerHeight - th - pad);
+		}
+		battleTipEl.style.left = x + 'px';
+		battleTipEl.style.top = y + 'px';
+	}
+
+	function showBattleCardTooltipFromDataset(host, clientX, clientY) {
+		if (!battleTipEl || !battleTipName || !battleTipAttr || !battleTipAbility) return;
+		battleTipName.textContent = host.dataset.battleName || '';
+		battleTipAttr.textContent = host.dataset.battleAttr || '—';
+		fillBattleTooltipAbility(battleTipAbility, host.dataset.battleAbility || '');
+		battleTipEl.hidden = false;
+		positionBattleCardTooltip(clientX, clientY);
+	}
+
+	function applyBattleCardTipData(el, d) {
+		if (!el || !d) return;
+		el.dataset.battleTip = '1';
+		el.dataset.battleName = d.name || '';
+		el.dataset.battleAttr = formatBattleCardAttr(d);
+		el.dataset.battleAbility = battleCardAbilityTooltipText(d);
+	}
+
+	function wireBattleCardTooltipHost(el) {
+		if (!el || !battleTipEl) return;
+		el.addEventListener('pointerenter', function (e) {
+			showBattleCardTooltipFromDataset(el, e.clientX, e.clientY);
+		});
+		el.addEventListener('pointermove', function (e) {
+			if (!battleTipEl.hidden) positionBattleCardTooltip(e.clientX, e.clientY);
+		});
+		el.addEventListener('pointerleave', hideBattleCardTooltip);
+	}
+
+	function wireBattleCardTooltips(root) {
+		if (!root || !battleTipEl) return;
+		root.querySelectorAll('[data-battle-tip="1"]').forEach(wireBattleCardTooltipHost);
 	}
 
 	async function fetchState() {
-		const res = await fetch('/battle/cpu/state', { headers: { 'Accept': 'application/json' } });
+		const res = await fetch(contextPath + '/battle/cpu/state', { headers: { 'Accept': 'application/json' } });
 		if (!res.ok) throw new Error('state fetch failed: ' + res.status);
 		return await res.json();
 	}
@@ -27,7 +198,7 @@
 	async function commitAction(payload) {
 		const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
 		if (csrfToken) headers[csrfHeader] = csrfToken;
-		const res = await fetch('/battle/cpu/commit', { method: 'POST', headers, body: JSON.stringify(payload) });
+		const res = await fetch(contextPath + '/battle/cpu/commit', { method: 'POST', headers, body: JSON.stringify(payload) });
 		if (!res.ok) throw new Error('commit failed: ' + res.status);
 		return await res.json();
 	}
@@ -95,10 +266,8 @@
 			btn.dataset.instanceId = c.instanceId;
 			btn.dataset.selected = 'false';
 			if (d) {
-				const im = document.createElement('img');
-				im.src = imgUrl(d.imageFile);
-				im.alt = d.name;
-				btn.appendChild(im);
+				btn.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				applyBattleCardTipData(btn, d);
 			}
 			grid.appendChild(btn);
 		});
@@ -117,6 +286,7 @@
 
 		overlay.appendChild(panel);
 		document.body.appendChild(overlay);
+		wireBattleCardTooltips(overlay);
 
 		function totalPaid() {
 			return ui.pay.stones + ui.pay.cardInstanceIds.length;
@@ -133,6 +303,7 @@
 		}
 
 		function teardown() {
+			hideBattleCardTooltip();
 			overlay.remove();
 		}
 
@@ -209,35 +380,41 @@
 		refresh();
 	}
 
-	function renderHandCards(hand, defs, { faceDown, selectable }) {
+	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp }) {
 		const wrap = el('div', faceDown ? 'hand backs' : 'hand');
+		if (faceDown && compactOpp) {
+			wrap.classList.add('hand--opp-backs');
+		}
 		if (faceDown) {
 			for (let i = 0; i < hand.length; i++) {
 				const im = document.createElement('img');
-				im.src = cardBack;
+				im.src = absUrl(cardBack);
 				im.alt = '裏';
 				wrap.appendChild(im);
 			}
 			return wrap;
 		}
-		hand.forEach((c, idx) => {
+		hand.forEach((c) => {
 			const d = defs[c.cardId];
 			const cardWrap = el('button', 'hand-card battle-card', null);
 			cardWrap.type = 'button';
 			cardWrap.dataset.instanceId = c.instanceId;
-			cardWrap.dataset.animKey = 'card:' + c.instanceId;
 			cardWrap.dataset.cardId = String(c.cardId);
 			cardWrap.disabled = !selectable;
 			if (ui.selectedInstanceId && ui.selectedInstanceId === c.instanceId) {
 				cardWrap.classList.add('is-selected');
 			}
-			const idxEl = el('span', 'hand-idx', String(idx));
-			cardWrap.appendChild(idxEl);
+			const caret = el('span', 'hand-card__select-caret', '▼');
+			caret.setAttribute('aria-hidden', 'true');
+			cardWrap.appendChild(caret);
+			const focusWrap = el('div', 'hand-card__card-focus', null);
+			focusWrap.dataset.animKey = 'card:' + c.instanceId;
 			if (d) {
-				const im = document.createElement('img');
-				im.src = imgUrl(d.imageFile);
-				im.alt = d.name;
-				cardWrap.appendChild(im);
+				focusWrap.appendChild(buildBattleCardFaceShell(d, 'hand'));
+				cardWrap.appendChild(focusWrap);
+				applyBattleCardTipData(cardWrap, d);
+			} else {
+				cardWrap.appendChild(focusWrap);
 			}
 			wrap.appendChild(cardWrap);
 		});
@@ -263,20 +440,29 @@
 		return base + computeDeployBonus(def, ui.levelUpRest, ui.levelUpStones);
 	}
 
-	function renderZone(zone, defs, power) {
+	function renderZone(zone, defs, power, opts) {
+		opts = opts || {};
+		const opponentZone = opts.opponentZone === true;
 		const box = el('div', 'zone');
 		if (!zone || !zone.main) {
 			box.appendChild(el('p', 'muted', 'なし'));
 			return box;
 		}
-		const d = defs[zone.main.cardId];
+		const d = resolveCardDef(defs, zone.main.cardId);
 		if (d) {
-			const wrap = el('div', 'battle-zone-card', null);
-			wrap.dataset.animKey = 'card:' + zone.main.instanceId;
-			const im = document.createElement('img');
-			im.src = imgUrl(d.imageFile);
-			im.alt = d.name;
-			wrap.appendChild(im);
+			const wrap = el('div', 'library-card battle-zone-card', null);
+			const shell = buildBattleCardFaceShell(d, opponentZone ? 'hand' : 'zone');
+			if (opponentZone) {
+				/* 手札と同じ battle-layered--hand + hand-card__card-focus でキラ等の見え方を揃える */
+				const faceMount = el('div', 'hand-card__card-focus battle-zone-card__opp-face', null);
+				faceMount.dataset.animKey = 'card:' + zone.main.instanceId;
+				faceMount.appendChild(shell);
+				wrap.appendChild(wrapLibraryCardOpenChrome(faceMount));
+			} else {
+				wrap.dataset.animKey = 'card:' + zone.main.instanceId;
+				wrap.appendChild(wrapLibraryCardOpenChrome(shell));
+			}
+			applyBattleCardTipData(wrap, d);
 			box.appendChild(wrap);
 		}
 		box.appendChild(el('p', 'muted', '強さ: ' + String(power)));
@@ -316,6 +502,7 @@
 
 	function render(st) {
 		app.innerHTML = '';
+		hideBattleCardTooltip();
 
 		app.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
 
@@ -323,7 +510,7 @@
 		{
 			const cellHand = el('div', 'battle-cell');
 			cellHand.appendChild(el('h3', '', '相手の手札'));
-			cellHand.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true }));
+			cellHand.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true }));
 			oppTop.appendChild(cellHand);
 
 			const cellStone = el('div', 'battle-cell');
@@ -342,7 +529,7 @@
 
 			const cellZone = el('div', 'battle-cell');
 			cellZone.appendChild(el('h3', '', '相手バトルゾーン'));
-			cellZone.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower));
+			cellZone.appendChild(renderZone(st.cpuBattle, st.defs, st.cpuBattlePower, { opponentZone: true }));
 			mid1.appendChild(cellZone);
 
 			const cellRest = el('div', 'battle-cell');
@@ -440,11 +627,64 @@
 			app.appendChild(panel);
 		}
 
-		if (st.eventLog && st.eventLog.length) {
-			const log = el('ul', 'log panel');
-			st.eventLog.forEach((line) => log.appendChild(el('li', '', line)));
-			app.appendChild(log);
+		lastEventLog = st.eventLog && st.eventLog.length ? st.eventLog.slice() : [];
+		if (battleLogModal && !battleLogModal.hidden) {
+			fillBattleLogList(lastEventLog);
 		}
+
+		wireBattleCardTooltips(app);
+	}
+
+	function fillBattleLogList(lines) {
+		if (!battleLogList) return;
+		battleLogList.innerHTML = '';
+		if (!lines || !lines.length) {
+			battleLogList.appendChild(el('li', 'battle-log-modal__empty', 'ログはまだありません。'));
+			return;
+		}
+		lines.forEach(function (line) {
+			battleLogList.appendChild(el('li', '', line));
+		});
+	}
+
+	function openBattleLogModal() {
+		if (!battleLogModal) return;
+		fillBattleLogList(lastEventLog);
+		battleLogModal.hidden = false;
+		document.body.style.overflow = 'hidden';
+		if (battleLogOpenBtn) battleLogOpenBtn.setAttribute('aria-expanded', 'true');
+	}
+
+	function closeBattleLogModal() {
+		if (!battleLogModal) return;
+		battleLogModal.hidden = true;
+		document.body.style.overflow = '';
+		if (battleLogOpenBtn) battleLogOpenBtn.setAttribute('aria-expanded', 'false');
+	}
+
+	function wireBattleLogModal() {
+		if (battleLogOpenBtn) {
+			battleLogOpenBtn.addEventListener('click', function () {
+				openBattleLogModal();
+			});
+		}
+		if (battleLogCloseBtn) {
+			battleLogCloseBtn.addEventListener('click', function () {
+				closeBattleLogModal();
+			});
+		}
+		if (battleLogModal) {
+			battleLogModal.addEventListener('click', function (e) {
+				if (e.target === battleLogModal) {
+					closeBattleLogModal();
+				}
+			});
+		}
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape' && battleLogModal && !battleLogModal.hidden) {
+				closeBattleLogModal();
+			}
+		});
 	}
 
 	async function rerenderWithFreshState() {
@@ -492,7 +732,9 @@
 	}
 
 	(async function init() {
+		wireBattleLogModal();
 		try {
+			document.addEventListener('scroll', hideBattleCardTooltip, true);
 			const st = await fetchState();
 			render(st);
 			attachHandlers();

@@ -58,7 +58,7 @@ public final class CanonicalLibraryCardText {
 		if (full == null || full.isEmpty()) {
 			return "";
 		}
-		if (full.endsWith("/効果なし。")) {
+		if (full.endsWith("/効果なし。") || full.endsWith("/能力なし。")) {
 			return "効果なし。";
 		}
 		String[] markers = {"/配置：", "/配置:", "/常時：", "/常時:"};

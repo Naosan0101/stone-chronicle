@@ -99,12 +99,17 @@ public class CpuBattleService {
 		Map<Short, CardDefDto> defDtos = defs.values().stream()
 				.collect(Collectors.toMap(
 						CardDefinition::getId,
-						d -> new CardDefDto(
+						d -> {
+							String rarity = d.getRarity();
+							String rar = rarity != null && !rarity.isBlank() ? rarity : "C";
+							return new CardDefDto(
 								d.getId(),
 								d.getName(),
 								(short) (d.getCost() != null ? d.getCost() : 0),
 								(short) (d.getBasePower() != null ? d.getBasePower() : 0),
 								d.getAttribute(),
+								rar,
+								rar,
 								d.getImageFile(),
 								d.getAbilityDeployCode(),
 								CardAttributeLabels.japaneseName(d.getAttribute()),
@@ -116,7 +121,8 @@ public class CpuBattleService {
 								CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
 										.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
 										.toList()
-						)
+							);
+						}
 				));
 
 		return new CpuBattleStateDto(

@@ -40,8 +40,8 @@
 			p.style.setProperty('--s', (0.72 + Math.random() * 0.92).toFixed(2));
 			p.style.setProperty('--d', (Math.random() * 3200).toFixed(0) + 'ms');
 			p.style.setProperty('--t', (2200 + Math.random() * 5200).toFixed(0) + 'ms');
-			p.style.setProperty('--a', (0.38 + Math.random() * 0.48).toFixed(2));
-			p.style.setProperty('--a0', (0.1 + Math.random() * 0.22).toFixed(2));
+			p.style.setProperty('--a', (0.18 + Math.random() * 0.26).toFixed(2));
+			p.style.setProperty('--a0', (0.05 + Math.random() * 0.1).toFixed(2));
 			sparkEl.appendChild(p);
 		}
 
@@ -54,7 +54,7 @@
 			p.style.setProperty('--len', ((r === 'Reg' ? 70 : 56) + Math.random() * 42).toFixed(0) + 'px');
 			p.style.setProperty('--d', (Math.random() * 4000).toFixed(0) + 'ms');
 			p.style.setProperty('--t', (2600 + Math.random() * 6200).toFixed(0) + 'ms');
-			p.style.setProperty('--a', (0.16 + Math.random() * 0.32).toFixed(2));
+			p.style.setProperty('--a', (0.08 + Math.random() * 0.16).toFixed(2));
 			sparkEl.appendChild(p);
 		}
 
@@ -69,8 +69,8 @@
 			p.style.setProperty('--rot', (Math.random() * 360).toFixed(0) + 'deg');
 			p.style.setProperty('--d', (Math.random() * 3600).toFixed(0) + 'ms');
 			p.style.setProperty('--t', (2400 + Math.random() * 6400).toFixed(0) + 'ms');
-			p.style.setProperty('--a', (0.3 + Math.random() * 0.45).toFixed(2));
-			p.style.setProperty('--a0', (0.06 + Math.random() * 0.16).toFixed(2));
+			p.style.setProperty('--a', (0.14 + Math.random() * 0.22).toFixed(2));
+			p.style.setProperty('--a0', (0.03 + Math.random() * 0.07).toFixed(2));
 			sparkEl.appendChild(p);
 		}
 

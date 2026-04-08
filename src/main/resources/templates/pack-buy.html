@@ -19,21 +19,21 @@
 	<div class="pack-buy__grid">
 		<div class="pack-buy__cell">
 			<button type="button" class="pack-buy__item" data-pack-type="STANDARD" data-pack-name="スタンダードパック" data-pack-cost="0">
-				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="スタンダードパック"/>
+				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${standardPackImage}?v=${packArtCacheKey}|" alt="スタンダードパック"/>
 				<span class="pack-buy__label">スタンダードパック（0ジェム）</span>
 			</button>
 			<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-standard">詳細を見る</button>
 		</div>
 		<div class="pack-buy__cell">
 			<button type="button" class="pack-buy__item" data-pack-type="WINDY_HILL" data-pack-name="風吹く丘パック" data-pack-cost="0">
-				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="風吹く丘パック"/>
+				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${windyHillPackImage}?v=${packArtCacheKey}|" alt="風吹く丘パック"/>
 				<span class="pack-buy__label">風吹く丘パック（0ジェム）</span>
 			</button>
 			<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-windy-hill">詳細を見る</button>
 		</div>
 		<div class="pack-buy__cell">
 			<button type="button" class="pack-buy__item" data-pack-type="EVIL_THREAT" data-pack-name="邪悪なる脅威パック" data-pack-cost="0">
-				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${packImage}|" alt="邪悪なる脅威パック"/>
+				<img class="pack-buy__img" th:src="|${contextPath != null ? contextPath : ''}${evilThreatPackImage}?v=${packArtCacheKey}|" alt="邪悪なる脅威パック"/>
 				<span class="pack-buy__label">邪悪なる脅威パック（0ジェム）</span>
 			</button>
 			<button type="button" class="btn btn--ghost pack-buy__detail" data-open-pack-detail="pack-detail-evil-threat">詳細を見る</button>

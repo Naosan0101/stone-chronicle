@@ -5,7 +5,7 @@ import com.example.stonechronicle.domain.AbilityBlockView;
 import java.util.List;
 
 /**
- * カード面の能力表示。本文は {@link CanonicalLibraryCardText} の1行原本から取り出し、
+ * カード面の効果表示。本文は {@link CanonicalLibraryCardText} の1行原本から取り出し、
  * 見出しだけ「配置：」「配置:」→〈配置〉、「常時：」「常時:」→〈常時〉にし、それ以外の文字は改変しない。
  */
 public final class CardFaceAbilityFormatter {
@@ -39,7 +39,7 @@ public final class CardFaceAbilityFormatter {
 
 	static List<AbilityBlockView> blocksFromCanonicalLine(String line) {
 		String s = line.startsWith("・") ? line.substring(1) : line;
-		if (s.contains("/効果なし。")) {
+		if (s.contains("/効果なし。") || s.contains("/能力なし。")) {
 			return List.of(new AbilityBlockView("", "効果なし。"));
 		}
 		int idx = s.indexOf("/配置：");

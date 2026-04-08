@@ -44,6 +44,17 @@ public final class GameConstants {
 		return CARD_ASSET_DIR + UriUtils.encodePathSegment(normalized, StandardCharsets.UTF_8);
 	}
 
+	/**
+	 * リポジトリ内の固定 PNG（カードうら・パック絵など）用。Windows ではファイル名が NFC のことが多く、{@link #encCardFile} だと 404 になる。
+	 */
+	private static String encCardFileNfc(String filename) {
+		if (filename == null || filename.isBlank()) {
+			return "";
+		}
+		String normalized = normalizeImageExtension(filename.trim());
+		return CARD_ASSET_DIR + UriUtils.encodePathSegment(normalized, StandardCharsets.UTF_8);
+	}
+
 	/** ①カード基盤 */
 	public static final String CARD_LAYER_BASE = encCardFile("カード基盤.PNG");
 
@@ -71,16 +82,24 @@ public final class GameConstants {
 		return encCardFile(imageFile);
 	}
 
-	public static final String CARD_BACK_FILE = "カードうら.PNG";
+	/** ASCII 名に統一（Git が NFD の「カードうら.PNG」だと URL 解決が環境で不一致になりやすい）。 */
+	public static final String CARD_BACK_FILE = "card-back.PNG";
 
 	public static String cardBackUrl() {
-		return encCardFile(CARD_BACK_FILE);
+		return encCardFileNfc(CARD_BACK_FILE);
 	}
 
 	public static final String CARD_PACK_FILE = "カードパック_イラスト.JPEG";
 
 	public static String packImageUrl() {
 		return encCardFile(CARD_PACK_FILE);
+	}
+
+	/**
+	 * 購入一覧など、{@code /images/cards/} 配下のパックアート用。{@link #encCardFileNfc} と同じく NFC で URL を組む。
+	 */
+	public static String packArtImageUrl(String filename) {
+		return encCardFileNfc(filename);
 	}
 
 	public static final int STARTING_COINS = 6;

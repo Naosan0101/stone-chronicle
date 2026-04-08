@@ -35,7 +35,7 @@ public class LibraryCardView {
 	/** DB のヘルプ文（モーダル用 data 属性など） */
 	private String deployHelp;
 	private String passiveHelp;
-	/** ⑤能力（見出し＋本文） */
+	/** ⑤効果（見出し＋本文） */
 	private List<AbilityBlockView> abilityBlocks;
 	/** カード面コスト欄の class（Thymeleaf フラグメント内の複雑な式を避ける） */
 	private String costFaceCssClass = "card-face__cost";

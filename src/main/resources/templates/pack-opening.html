@@ -21,13 +21,13 @@
 		        th:each="c, iter : ${pulledFaces}"
 		        th:attr="data-pack-index=${iter.index}, data-rarity=${c.rarity}">
 			<div class="pack-opening-card__inner">
-				<img class="pack-opening-card__back" th:src="|${contextPath != null ? contextPath : ''}${cardBackUrl}|"
+				<img class="pack-opening-card__back" th:src="|${contextPath != null ? contextPath : ''}${cardBackUrl}?v=${cardBackCacheKey}|"
 				     alt="カードうら"/>
 				<div class="pack-opening-card__face" hidden>
 					<div th:replace="~{fragments/card-face :: layers(c=${c}, cp=${contextPath})}"></div>
 				</div>
 				<div class="pack-opening-card__spark" hidden aria-hidden="true"></div>
-				<div class="pack-opening-card__arrow" th:if="${iter.first}" aria-hidden="true">▲</div>
+				<div class="pack-opening-card__arrow" th:if="${iter.first}" aria-hidden="true">▼</div>
 			</div>
 		</button>
 	</div>
