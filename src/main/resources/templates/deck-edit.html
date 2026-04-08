@@ -40,17 +40,22 @@
 
 	<div class="deck-panels deck-panels--stack">
 		<section class="panel deck-panel deck-panel--slots">
-			<h2>デッキ（8枚・ダブルクリックで戻す）</h2>
+			<h2>デッキ（8枚・クリックで詳細・ダブルクリックで戻す）</h2>
 			<div id="deck-zone" class="card-pool card-pool--deck" data-max="8"></div>
 			<p id="deck-count" class="muted">0 / 8</p>
-			<button type="submit" id="complete-btn" class="btn btn--primary" style="display:none">完了</button>
+			<div class="deck-panel__actions-row">
+				<button type="submit" id="complete-btn" class="btn btn--primary" style="display:none">完了</button>
+				<button type="button" id="deck-clear-all-btn" class="btn btn--ghost deck-panel__clear-deck-btn"
+						disabled
+						aria-label="デッキに入っているカードをすべてライブラリに戻す">すべてライブラリに戻す</button>
+			</div>
 		</section>
 		<section class="panel deck-panel deck-panel--library">
 			<div class="deck-lib-toolbar">
-				<h2 class="deck-lib-toolbar__title">ライブラリ（ダブルクリックでデッキへ）</h2>
+				<h2 class="deck-lib-toolbar__title">ライブラリ（クリックで詳細・ダブルクリックでデッキへ）</h2>
 				<div class="deck-lib-toolbar__controls">
-					<label class="deck-lib-field">名前検索
-						<input type="search" id="lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名の一部"/>
+					<label class="deck-lib-field">検索
+						<input type="search" id="lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名・効果の一部"/>
 					</label>
 					<label class="deck-lib-field">種族
 						<select id="lib-filter-attr" class="deck-lib-select">
@@ -115,6 +120,8 @@
 	     th:data-cost="${c.cost}"
 	     th:data-ability="${c.libraryAbilityText != null ? c.libraryAbilityText : ''}"
 	     th:data-canonical-line="${c.canonicalAbilityLine != null ? c.canonicalAbilityLine : ''}"
+	     th:data-deploy-help="${c.deployHelp != null ? c.deployHelp : ''}"
+	     th:data-passive-help="${c.passiveHelp != null ? c.passiveHelp : ''}"
 	     th:data-attr-pipe="${c.attributeLabelPipe != null ? c.attributeLabelPipe : ''}"></div>
 </div>
 <div id="selected-seed" style="display:none">

@@ -545,12 +545,12 @@ public class CpuBattleEngine {
 			case "GURIFON" -> {
 				if (st.getCpuStones() > 0) {
 					st.setCpuStones(st.getCpuStones() - 1);
-					st.addLog("グリフォン: CPUがストーンを1つ捨てた");
+					st.addLog(d.getName() + ": CPUがストーンを1つ捨てた");
 				}
 			}
 			case "KAZE_MAJIN" -> {
 				st.setHumanStones(st.getHumanStones() + 2);
-				st.addLog("風の魔人: ストーン+2");
+				st.addLog(d.getName() + ": ストーン+2");
 			}
 			default -> {
 			}

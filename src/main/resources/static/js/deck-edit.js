@@ -13,6 +13,7 @@
 	const deckZone = document.getElementById('deck-zone');
 	const deckCount = document.getElementById('deck-count');
 	const completeBtn = document.getElementById('complete-btn');
+	const clearAllDeckBtn = document.getElementById('deck-clear-all-btn');
 	const cardIdsInput = document.getElementById('cardIds');
 	const detailModal = document.getElementById('library-detail-modal');
 	const detailArtWrap = document.getElementById('library-detail-art');
@@ -308,6 +309,8 @@
 			cost: isNaN(cost) ? 0 : cost,
 			ability: el.dataset.ability || '',
 			canonicalLine: el.dataset.canonicalLine || '',
+			deployHelp: el.dataset.deployHelp || '',
+			passiveHelp: el.dataset.passiveHelp || '',
 			attrPipe: el.dataset.attrPipe || ''
 		};
 	}).filter(function (c) { return c.qty > 0 && !isNaN(c.id); });
@@ -341,13 +344,32 @@
 		return a.name.localeCompare(b.name, 'ja');
 	}
 
+	function matchesCardTextSearch(q, parts) {
+		if (!q) return true;
+		for (let i = 0; i < parts.length; i++) {
+			const s = parts[i];
+			if (s != null && s !== '' && String(s).indexOf(q) !== -1) return true;
+		}
+		return false;
+	}
+
 	function sortedLibraryList() {
 		const q = libSearch ? libSearch.value.trim() : '';
 		const attrF = libFilterAttr ? libFilterAttr.value : '';
 		const powF = libFilterPower ? libFilterPower.value : '';
 		const rarF = libFilterRarity ? libFilterRarity.value : '';
 		let list = seeds.filter(function (c) {
-			if (q && c.name.indexOf(q) === -1) return false;
+			if (
+				!matchesCardTextSearch(q, [
+					c.name,
+					c.ability,
+					c.canonicalLine,
+					c.deployHelp,
+					c.passiveHelp
+				])
+			) {
+				return false;
+			}
 			if (attrF && !matchesTribeFilter(c.attribute, attrF)) return false;
 			if (powF !== '' && c.power !== parseInt(powF, 10)) return false;
 			if (rarF && c.rarity !== rarF) return false;
@@ -436,6 +458,31 @@
 		});
 	}
 
+	/** シングルクリックで詳細モーダル（ライブラリページと同じ `#library-detail-modal`）。ダブルクリック操作と競合しないよう遅延＋キャンセル */
+	let pendingCardDetailTimer = null;
+	function bindClickOpenCardDetail(el, c) {
+		el.addEventListener('click', function (e) {
+			if (e.detail >= 2) {
+				if (pendingCardDetailTimer) {
+					clearTimeout(pendingCardDetailTimer);
+					pendingCardDetailTimer = null;
+				}
+				return;
+			}
+			if (pendingCardDetailTimer) clearTimeout(pendingCardDetailTimer);
+			pendingCardDetailTimer = setTimeout(function () {
+				pendingCardDetailTimer = null;
+				openCardDetailModal(c);
+			}, 280);
+		});
+		el.addEventListener('dblclick', function () {
+			if (pendingCardDetailTimer) {
+				clearTimeout(pendingCardDetailTimer);
+				pendingCardDetailTimer = null;
+			}
+		});
+	}
+
 	function fillDeckTooltipAbility(el, raw) {
 		if (!el) return;
 		el.textContent = '';
@@ -520,10 +567,19 @@
 			el.className = 'mini-card mini-card--lib' + (inDeck > 0 ? ' mini-card--in-deck' : '');
 			el.dataset.id = String(c.id);
 			const inDeckHint = inDeck > 0 ? '。デッキに' + inDeck + '枚使用中' : '';
-			el.setAttribute('aria-label', c.name + '（強さ' + c.power + '・×' + c.qty + inDeckHint + '）をダブルクリックでデッキへ');
+			el.setAttribute(
+				'aria-label',
+				c.name +
+					'（強さ' +
+					c.power +
+					'・×' +
+					c.qty +
+					inDeckHint +
+					'）。クリックで詳細、ダブルクリックでデッキへ'
+			);
 			appendLibCardFace(el, c);
 			wireSparkOnMiniCardHost(el, c);
-			bindPreview(el, c);
+			bindClickOpenCardDetail(el, c);
 			bindCardTooltip(el, c);
 			bindDeckDoubleAction(el, function () {
 				if (!canAddToDeck(c.id, cap)) return;
@@ -532,10 +588,11 @@
 				copy.dataset.id = String(c.id);
 				copy.setAttribute('role', 'button');
 				copy.setAttribute('tabindex', '0');
-				copy.setAttribute('aria-label', c.name + 'をダブルクリックでデッキから戻す');
+				copy.setAttribute('aria-label', c.name + '。クリックで詳細、ダブルクリックでデッキから戻す');
 				appendCardImage(copy, c);
 				wireSparkOnMiniCardHost(copy, c);
 				bindPreview(copy, c);
+				bindClickOpenCardDetail(copy, c);
 				bindCardTooltip(copy, c);
 				bindDeckDoubleAction(copy, function () {
 					copy.remove();
@@ -567,8 +624,28 @@
 		const n = deckZone.querySelectorAll('.mini-card').length;
 		deckCount.textContent = n + ' / 8';
 		completeBtn.style.display = n === 8 ? '' : 'none';
+		if (clearAllDeckBtn) {
+			clearAllDeckBtn.disabled = n === 0;
+		}
 		const ids = Array.from(deckZone.querySelectorAll('.mini-card')).map(function (x) { return x.dataset.id; });
 		cardIdsInput.value = ids.join(',');
+	}
+
+	function clearDeckToLibrary() {
+		if (!deckZone) return;
+		deckZone.querySelectorAll('.mini-card').forEach(function (node) {
+			node.remove();
+		});
+		hideTooltip();
+		closeCardDetailModal();
+		refreshLib();
+		update();
+	}
+
+	if (clearAllDeckBtn) {
+		clearAllDeckBtn.addEventListener('click', function () {
+			clearDeckToLibrary();
+		});
 	}
 
 	function bootstrapDeck() {
@@ -582,10 +659,11 @@
 			copy.dataset.id = String(id);
 			copy.setAttribute('role', 'button');
 			copy.setAttribute('tabindex', '0');
-			copy.setAttribute('aria-label', c.name + 'をダブルクリックでデッキから戻す');
+			copy.setAttribute('aria-label', c.name + '。クリックで詳細、ダブルクリックでデッキから戻す');
 			appendCardImage(copy, c);
 			wireSparkOnMiniCardHost(copy, c);
 			bindPreview(copy, c);
+			bindClickOpenCardDetail(copy, c);
 			bindCardTooltip(copy, c);
 			bindDeckDoubleAction(copy, function () {
 				copy.remove();

@@ -401,6 +401,15 @@
 			return a.name.localeCompare(b.name, 'ja');
 		}
 
+		function matchesCardTextSearch(q, parts) {
+			if (!q) return true;
+			for (let i = 0; i < parts.length; i++) {
+				const s = parts[i];
+				if (s != null && s !== '' && String(s).indexOf(q) !== -1) return true;
+			}
+			return false;
+		}
+
 		function applyBrowser() {
 			const q = searchInput.value.trim();
 			const attrSel = filterAttr.value;
@@ -413,13 +422,23 @@
 				return {
 					card: card,
 					name: ds.name || '',
+					owned: ds.owned === 'true',
 					attribute: ds.attribute || '',
 					power: isNaN(p) ? 0 : p,
-					rarity: (ds.rarity || 'C').trim()
+					rarity: (ds.rarity || 'C').trim(),
+					searchParts: [
+						ds.name,
+						ds.ability,
+						ds.canonicalLine,
+						ds.deployHelp,
+						ds.passiveHelp
+					]
 				};
 			});
 			items = items.filter(function (it) {
-				if (q && it.name.indexOf(q) === -1) return false;
+				// テキスト検索時のみ未所持はヒットさせない（絞り込み・並びは従来どおり全カード対象）
+				if (q && !it.owned) return false;
+				if (!matchesCardTextSearch(q, it.searchParts)) return false;
 				if (attrSel && !matchesTribeFilter(it.attribute, attrSel)) return false;
 				if (powerSel && String(it.power) !== String(powerSel)) return false;
 				if (raritySel && it.rarity !== raritySel) return false;

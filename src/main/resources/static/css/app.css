@@ -479,6 +479,16 @@ body {
 .page--deck .deck-panel--library {
 	order: 2;
 }
+.deck-panel__actions-row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	margin-top: 0.35rem;
+}
+.deck-panel__clear-deck-btn {
+	margin-left: auto;
+}
 .deck-lib-toolbar {
 	display: flex;
 	flex-wrap: wrap;

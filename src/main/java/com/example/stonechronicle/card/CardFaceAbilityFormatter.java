@@ -22,7 +22,7 @@ public final class CardFaceAbilityFormatter {
 	}
 
 	/**
-	 * ライブラリのマウスオーバー用。「・名前/コスト/強さ/」部分は除き、
+	 * ライブラリのマウスオーバー用。「・名前/レア度/コスト/強さ/」部分は除き、
 	 * 「配置：」「配置:」は行頭の {@code 〈配置〉} に、「常時：」「常時:」は {@code 〈常時〉} に置き換えたテキスト。
 	 */
 	public static String tooltipAbilityTextForCardId(short cardId) {
