@@ -27,7 +27,11 @@
 		selectedInstanceId: null,
 		levelUpRest: 0,
 		levelUpStones: 0,
+		levelUpDiscardIds: [],
 		pay: { stones: 0, cardInstanceIds: [] },
+		_cpuThinkTimer: null,
+		_resolveTimer: null,
+		_prevPowerByInstanceId: Object.create(null),
 		warnLevelUpRest: null,
 		warnLevelUpStone: null,
 		sparkLevelUpRest: false,
@@ -253,6 +257,22 @@
 		return await res.json();
 	}
 
+	async function cpuStep() {
+		const headers = { 'Accept': 'application/json' };
+		if (csrfToken) headers[csrfHeader] = csrfToken;
+		const res = await fetch(contextPath + '/battle/cpu/cpu-step', { method: 'POST', headers });
+		if (!res.ok) throw new Error('cpu-step failed: ' + res.status);
+		return await res.json();
+	}
+
+	async function resolvePending() {
+		const headers = { 'Accept': 'application/json' };
+		if (csrfToken) headers[csrfHeader] = csrfToken;
+		const res = await fetch(contextPath + '/battle/cpu/resolve', { method: 'POST', headers });
+		if (!res.ok) throw new Error('resolve failed: ' + res.status);
+		return await res.json();
+	}
+
 	function el(tag, cls, text) {
 		const n = document.createElement(tag);
 		if (cls) n.className = cls;
@@ -408,6 +428,7 @@
 			teardown();
 			const payload = {
 				levelUpRest: ui.levelUpRest,
+				levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
 				levelUpStones: ui.levelUpStones,
 				deployInstanceId: sel.instanceId,
 				payCostStones: ui.pay.stones,
@@ -418,6 +439,7 @@
 				ui.selectedInstanceId = null;
 				ui.levelUpRest = 0;
 				ui.levelUpStones = 0;
+				ui.levelUpDiscardIds = [];
 				ui.warnLevelUpRest = null;
 				ui.warnLevelUpStone = null;
 				ui._luPrevPowerInstanceId = null;
@@ -458,6 +480,11 @@
 		panel.appendChild(el('p', 'muted', '合計: ' + String(list.length) + '枚'));
 
 		const grid = el('div', 'battle-pay-modal__cardgrid');
+		// Rest modal: center align cards (no CSS file changes)
+		grid.style.display = 'flex';
+		grid.style.flexWrap = 'wrap';
+		grid.style.justifyContent = 'center';
+		grid.style.gap = '10px';
 		list.forEach(function (c) {
 			const d = resolveCardDef(defs, c.cardId);
 			const host = el('div', 'battle-pay-modal__card', null);
@@ -494,6 +521,103 @@
 				onClose();
 			}
 		});
+	}
+
+	function showLevelUpDiscardConfirmModal(st, onOk) {
+		const sel = selectedCard(st);
+		if (!sel) return;
+		const hand = Array.isArray(st.humanHand) ? st.humanHand.slice() : [];
+		const n = Math.max(0, Math.min(ui.levelUpRest | 0, hand.length));
+		if (n <= 0) {
+			if (typeof onOk === 'function') onOk();
+			return;
+		}
+		const picked = [];
+
+		hideBattleCardTooltip();
+		hideBattleDeckTooltip();
+
+		const overlay = el('div', 'battle-pay-modal');
+		overlay.setAttribute('role', 'dialog');
+		overlay.setAttribute('aria-modal', 'true');
+
+		const panel = el('div', 'battle-pay-modal__panel');
+		const closeBtn = el('button', 'battle-pay-modal__close', '×');
+		closeBtn.type = 'button';
+		panel.appendChild(closeBtn);
+
+		panel.appendChild(el('h2', 'battle-pay-modal__title', '捨てるカードを選択'));
+		panel.appendChild(el('p', 'muted', '手札から ' + String(n) + '枚選んで、レストに置きます。'));
+
+		const grid = el('div', 'battle-pay-modal__cardgrid');
+		hand.forEach(function (c) {
+			if (c.instanceId === sel.instanceId) return; // 配置カードは捨てられない
+			const d = resolveCardDef(st.defs, c.cardId);
+			const host = el('button', 'battle-pay-modal__card', null);
+			host.type = 'button';
+			host.dataset.instanceId = c.instanceId;
+			if (d) {
+				host.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				applyBattleCardTipData(host, d);
+			}
+			grid.appendChild(host);
+		});
+		panel.appendChild(grid);
+
+		const actions = el('div', 'battle-pay-modal__actions');
+		const cancel = el('button', 'btn btn--ghost', 'キャンセル');
+		cancel.type = 'button';
+		const ok = el('button', 'btn btn--primary', 'OK');
+		ok.type = 'button';
+		ok.disabled = true;
+		actions.appendChild(cancel);
+		actions.appendChild(ok);
+		panel.appendChild(actions);
+
+		overlay.appendChild(panel);
+		document.body.appendChild(overlay);
+		wireBattleCardTooltips(overlay);
+
+		function teardown() {
+			hideBattleCardTooltip();
+			hideBattleDeckTooltip();
+			overlay.remove();
+		}
+
+		closeBtn.addEventListener('click', teardown);
+		cancel.addEventListener('click', teardown);
+		overlay.addEventListener('click', function (e) {
+			if (e.target === overlay) teardown();
+		});
+
+		ok.addEventListener('click', function () {
+			teardown();
+			ui.levelUpDiscardIds = picked.slice();
+			if (typeof onOk === 'function') onOk();
+		});
+
+		function refresh() {
+			ok.disabled = picked.length !== n;
+		}
+		grid.addEventListener('click', function (e) {
+			const t = e.target;
+			if (!(t instanceof Element)) return;
+			const btn = t.closest('.battle-pay-modal__card');
+			if (!btn) return;
+			const inst = btn.getAttribute('data-instance-id');
+			if (!inst) return;
+			const i = picked.indexOf(inst);
+			if (i >= 0) {
+				picked.splice(i, 1);
+				btn.classList.remove('is-selected');
+			} else {
+				if (picked.length >= n) return;
+				picked.push(inst);
+				btn.classList.add('is-selected');
+			}
+			refresh();
+		});
+		refresh();
 	}
 
 	function wireDeckStackTooltip(wrap, count) {
@@ -615,7 +739,7 @@
 		return wrap;
 	}
 
-	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp }) {
+	function renderHandCards(hand, defs, { faceDown, selectable, compactOpp, nextDeployBonus, nextElfOnlyBonus }) {
 		const wrap = el('div', faceDown ? 'hand backs' : 'hand');
 		if (faceDown && compactOpp) {
 			wrap.classList.add('hand--opp-backs');
@@ -645,7 +769,16 @@
 			const focusWrap = el('div', 'hand-card__card-focus', null);
 			focusWrap.dataset.animKey = 'card:' + c.instanceId;
 			if (d) {
-				focusWrap.appendChild(buildBattleCardFaceShell(d, 'hand'));
+				const shell = buildBattleCardFaceShell(d, 'hand');
+				const basePow = Number(d.basePower != null ? d.basePower : 0);
+				let bonus = Number(nextDeployBonus || 0);
+				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttribute(d.attribute, 'ELF')) {
+					bonus += Number(nextElfOnlyBonus || 0);
+				}
+				const curPow = basePow + bonus;
+				applyCurrentPowerDisplay(shell, basePow, curPow);
+				maybeSparkPowerIncrease(shell, c.instanceId, curPow);
+				focusWrap.appendChild(shell);
 				cardWrap.appendChild(focusWrap);
 				applyBattleCardTipData(cardWrap, d);
 			} else {
@@ -804,6 +937,38 @@
 		else if (pv < baseNum) powEl.classList.add('battle-levelup-power--down');
 	}
 
+	function applyCurrentPowerDisplay(shellRoot, basePower, currentPower) {
+		const powEl = shellRoot.querySelector('.card-face__power');
+		if (!powEl) return;
+		const pv = Math.max(0, Math.floor(Number(currentPower)));
+		const baseNum = Math.floor(Number(basePower));
+		powEl.textContent = String(pv);
+		powEl.classList.toggle('card-face__power--digit-4', pv === 4);
+		powEl.classList.remove('battle-levelup-power--up', 'battle-levelup-power--down');
+		powEl.style.color = '';
+		if (pv > baseNum) {
+			powEl.classList.add('battle-levelup-power--up');
+			powEl.style.color = '#22c55e';
+		} else if (pv < baseNum) {
+			powEl.classList.add('battle-levelup-power--down');
+			powEl.style.color = '#ef4444';
+		}
+	}
+
+	function maybeSparkPowerIncrease(shellRoot, instanceId, currentPower) {
+		if (!shellRoot || !instanceId) return;
+		const pv = Math.max(0, Math.floor(Number(currentPower)));
+		const prev = ui._prevPowerByInstanceId[instanceId];
+		ui._prevPowerByInstanceId[instanceId] = pv;
+		if (prev == null) return;
+		if (pv <= prev) return;
+		const powEl = shellRoot.querySelector('.card-face__power');
+		const sparkHost = wrapLevelUpPreviewPowerSparkHost(powEl);
+		if (sparkHost) {
+			appendLevelUpValueSparkBurst(sparkHost);
+		}
+	}
+
 	/** 強さ表示周りのキラ（レベルアップ数値と同一アニメ）用。card-face__power は absolute のためホストで枠を取る */
 	function wrapLevelUpPreviewPowerSparkHost(powEl) {
 		if (!powEl || !powEl.parentNode) return null;
@@ -829,16 +994,67 @@
 		const d = resolveCardDef(defs, zone.main.cardId);
 		if (d) {
 			const wrap = el('div', 'library-card battle-zone-card', null);
+			// Under-cards (cost/levelup): show as a small fanned stack of card backs
+			const under = Array.isArray(zone.under) ? zone.under : [];
+			if (under.length) {
+				const stack = el('div', '', null);
+				stack.style.position = 'absolute';
+				// Peek out from behind the card (deck-like)
+				stack.style.left = '-10px';
+				stack.style.top = '-10px';
+				stack.style.pointerEvents = 'none';
+				stack.style.opacity = '0.95';
+				stack.style.zIndex = '0';
+				const n = Math.min(under.length, 6);
+				for (let i = 0; i < n; i++) {
+					const im = document.createElement('img');
+					im.src = absUrl(cardBack);
+					im.alt = '';
+					im.style.position = 'absolute';
+					im.style.width = '34px';
+					im.style.height = '48px';
+					im.style.borderRadius = '4px';
+					im.style.boxShadow = '0 6px 16px rgba(0,0,0,.25)';
+					im.style.transform = 'translate(' + (i * 5) + 'px,' + (i * 4) + 'px)';
+					im.style.zIndex = String(1 + i);
+					stack.appendChild(im);
+				}
+				if (under.length > n) {
+					const badge = el('div', '', '+' + String(under.length - n));
+					badge.style.position = 'absolute';
+					badge.style.left = (n * 5 + 4) + 'px';
+					badge.style.top = (n * 4 + 4) + 'px';
+					badge.style.fontSize = '12px';
+					badge.style.padding = '2px 6px';
+					badge.style.borderRadius = '999px';
+					badge.style.background = 'rgba(0,0,0,.55)';
+					badge.style.color = '#fff';
+					badge.style.boxShadow = '0 6px 16px rgba(0,0,0,.25)';
+					stack.appendChild(badge);
+				}
+				wrap.style.position = 'relative';
+				// allow stack to peek outside the card chrome
+				wrap.style.overflow = 'visible';
+				wrap.appendChild(stack);
+			}
 			const shell = buildBattleCardFaceShell(d, opponentZone ? 'hand' : 'zone');
+			applyCurrentPowerDisplay(shell, Number(d.basePower || 0), power);
+			maybeSparkPowerIncrease(shell, zone.main.instanceId, power);
 			if (opponentZone) {
 				/* 手札と同じ battle-layered--hand + hand-card__card-focus でキラ等の見え方を揃える */
 				const faceMount = el('div', 'hand-card__card-focus battle-zone-card__opp-face', null);
 				faceMount.dataset.animKey = 'card:' + zone.main.instanceId;
 				faceMount.appendChild(shell);
-				wrap.appendChild(wrapLibraryCardOpenChrome(faceMount));
+				const chrome = wrapLibraryCardOpenChrome(faceMount);
+				chrome.style.position = 'relative';
+				chrome.style.zIndex = '1';
+				wrap.appendChild(chrome);
 			} else {
 				wrap.dataset.animKey = 'card:' + zone.main.instanceId;
-				wrap.appendChild(wrapLibraryCardOpenChrome(shell));
+				const chrome = wrapLibraryCardOpenChrome(shell);
+				chrome.style.position = 'relative';
+				chrome.style.zIndex = '1';
+				wrap.appendChild(chrome);
 			}
 			applyBattleCardTipData(wrap, d);
 			box.appendChild(wrap);
@@ -1040,11 +1256,169 @@
 		return cluster;
 	}
 
+	async function sendChoice(payload) {
+		const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+		if (csrfToken) headers[csrfHeader] = csrfToken;
+		const res = await fetch(contextPath + '/battle/cpu/choice', { method: 'POST', headers, body: JSON.stringify(payload) });
+		if (!res.ok) throw new Error('choice failed: ' + res.status);
+		return await res.json();
+	}
+
+	function showChoiceModal(st) {
+		const pc = st.pendingChoice;
+		if (!pc) return;
+		if (!pc.forHuman) return;
+
+		hideBattleCardTooltip();
+		hideBattleDeckTooltip();
+
+		const overlay = el('div', 'battle-pay-modal');
+		overlay.setAttribute('role', 'dialog');
+		overlay.setAttribute('aria-modal', 'true');
+
+		const panel = el('div', 'battle-pay-modal__panel');
+		const closeBtn = el('button', 'battle-pay-modal__close', '×');
+		closeBtn.type = 'button';
+		panel.appendChild(closeBtn);
+		panel.appendChild(el('h2', 'battle-pay-modal__title', pc.prompt || '選択'));
+
+		const picked = [];
+
+		if (pc.kind === 'CONFIRM_OPTIONAL_STONE') {
+			panel.appendChild(el('p', 'muted', 'ストーンを' + String(pc.stoneCost || 0) + '使用しますか？'));
+			const actions = el('div', 'battle-pay-modal__actions');
+			const noBtn = el('button', 'btn btn--ghost', 'しない');
+			noBtn.type = 'button';
+			const yesBtn = el('button', 'btn btn--primary', '使用する');
+			yesBtn.type = 'button';
+			actions.appendChild(noBtn);
+			actions.appendChild(yesBtn);
+			panel.appendChild(actions);
+
+			function teardown() { overlay.remove(); }
+			closeBtn.addEventListener('click', teardown);
+			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
+
+			noBtn.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardown();
+				sendChoice({ confirm: false, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+					// choice 後は効果処理を進める
+					return resolvePending();
+				}).then(function (next2) {
+					if (next2) render(next2);
+				}).catch(function () { rerenderWithFreshState(); });
+			});
+			yesBtn.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardown();
+				sendChoice({ confirm: true, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+					return resolvePending();
+				}).then(function (next2) {
+					if (next2) render(next2);
+				}).catch(function () { rerenderWithFreshState(); });
+			});
+		} else {
+			const grid = el('div', 'battle-pay-modal__cardgrid');
+			const ids = pc.optionInstanceIds || [];
+			ids.forEach(function (inst) {
+				let card = null;
+				(st.humanHand || []).forEach(function (c) { if (c.instanceId === inst) card = c; });
+				(st.humanRest || []).forEach(function (c) { if (c.instanceId === inst) card = c; });
+				if (!card) return;
+				const d = resolveCardDef(st.defs, card.cardId);
+				const btn = el('button', 'battle-pay-modal__card', null);
+				btn.type = 'button';
+				btn.dataset.instanceId = inst;
+				if (d) btn.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				grid.appendChild(btn);
+			});
+			panel.appendChild(grid);
+
+			const actions = el('div', 'battle-pay-modal__actions');
+			const cancel = el('button', 'btn btn--ghost', 'キャンセル');
+			cancel.type = 'button';
+			const ok = el('button', 'btn btn--primary', 'OK');
+			ok.type = 'button';
+			ok.disabled = true;
+			actions.appendChild(cancel);
+			actions.appendChild(ok);
+			panel.appendChild(actions);
+
+			function needCount() {
+				if (pc.kind === 'SELECT_SWAP_REST_AND_HAND') return 2;
+				return 1;
+			}
+			function refresh() { ok.disabled = picked.length !== needCount(); }
+
+			grid.addEventListener('click', function (e) {
+				const t = e.target;
+				if (!(t instanceof Element)) return;
+				const btn = t.closest('.battle-pay-modal__card');
+				if (!btn) return;
+				const inst = btn.getAttribute('data-instance-id');
+				if (!inst) return;
+				const idx = picked.indexOf(inst);
+				if (idx >= 0) {
+					picked.splice(idx, 1);
+					btn.classList.remove('is-selected');
+				} else {
+					picked.push(inst);
+					btn.classList.add('is-selected');
+					if (picked.length > needCount()) {
+						// keep last N
+						const drop = picked.shift();
+						const dropBtn = grid.querySelector('[data-instance-id="' + drop + '"]');
+						if (dropBtn) dropBtn.classList.remove('is-selected');
+					}
+				}
+				refresh();
+			});
+
+			function teardown() { overlay.remove(); }
+			closeBtn.addEventListener('click', teardown);
+			cancel.addEventListener('click', teardown);
+			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
+
+			ok.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardown();
+				sendChoice({ confirm: true, pickedInstanceIds: picked.slice() }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+					return resolvePending();
+				}).then(function (next2) {
+					if (next2) render(next2);
+				}).catch(function () { rerenderWithFreshState(); });
+			});
+
+			refresh();
+		}
+
+		overlay.appendChild(panel);
+		document.body.appendChild(overlay);
+	}
+
 	function render(st) {
 		lastDefsForTooltip = st.defs || null;
 		app.innerHTML = '';
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
+
+		// Top "thinking" banner (fixed-ish inside app)
+		if (st.phase === 'CPU_THINKING') {
+			const b = el('div', 'panel', null);
+			b.style.position = 'sticky';
+			b.style.top = '0';
+			b.style.zIndex = '20';
+			b.style.marginBottom = '10px';
+			b.textContent = '考え中...';
+			app.appendChild(b);
+		}
 
 		app.appendChild(el('p', 'battle-msg', st.lastMessage || '—'));
 
@@ -1059,7 +1433,7 @@
 			const cellHand = el('div', 'battle-cell battle-cell--opp-hand');
 			cellHand.appendChild(el('h3', '', '相手の手札'));
 			const oppHandRow = el('div', 'battle-opp-hand-row');
-			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true }));
+			oppHandRow.appendChild(renderHandCards(st.cpuHand, st.defs, { faceDown: true, compactOpp: true, nextDeployBonus: 0, nextElfOnlyBonus: 0 }));
 			const oppStonesInline = el('div', 'battle-opp-hand-row__stones');
 			oppStonesInline.setAttribute('aria-label', '相手ストーン所持数 ' + String(st.cpuStones));
 			oppStonesInline.appendChild(el('span', 'battle-opp-hand-row__stones-label', 'ストーン'));
@@ -1121,7 +1495,12 @@
 			stonesTop.appendChild(el('span', 'battle-you-hand-stones__label', 'ストーン'));
 			stonesTop.appendChild(el('span', 'battle-you-hand-stones__value', String(st.humanStones)));
 			cellHand.appendChild(stonesTop);
-			cellHand.appendChild(renderHandCards(st.humanHand, st.defs, { faceDown: false, selectable: st.humansTurn && !st.gameOver }));
+			cellHand.appendChild(renderHandCards(st.humanHand, st.defs, {
+				faceDown: false,
+				selectable: st.humansTurn && !st.gameOver,
+				nextDeployBonus: st.humanNextDeployBonus || 0,
+				nextElfOnlyBonus: st.humanNextElfOnlyBonus || 0
+			}));
 			inner.appendChild(cellHand);
 
 			const cellDeck = el('div', 'battle-cell battle-cell--compact battle-cell--you-deck');
@@ -1138,6 +1517,103 @@
 		}
 
 		wireBattleCardTooltips(app);
+
+		// CPU random think (3-7s) → cpu-step
+		if (st.phase === 'CPU_THINKING' && !st.gameOver) {
+			if (ui._cpuThinkTimer == null) {
+				const waitMs = 3000 + Math.floor(Math.random() * 4000);
+				ui._cpuThinkTimer = window.setTimeout(function () {
+					ui._cpuThinkTimer = null;
+					const prev = captureAnimRects();
+					cpuStep().then(function (next) {
+						render(next);
+						requestAnimationFrame(function () { playFLIP(prev); });
+					}).catch(function (e) {
+						// eslint-disable-next-line no-console
+						console.error(e);
+						rerenderWithFreshState();
+					});
+				}, waitMs);
+			}
+		} else if (ui._cpuThinkTimer != null) {
+			clearTimeout(ui._cpuThinkTimer);
+			ui._cpuThinkTimer = null;
+		}
+
+		// Show effect for 3 seconds, then resolve
+		if ((st.phase === 'HUMAN_EFFECT_PENDING' || st.phase === 'CPU_EFFECT_PENDING') && st.pendingEffect && !st.gameOver) {
+			// cancel existing to avoid duplication
+			if (ui._resolveTimer != null) {
+				clearTimeout(ui._resolveTimer);
+				ui._resolveTimer = null;
+			}
+
+			const pe = st.pendingEffect;
+			const def = resolveCardDef(st.defs, pe.cardId);
+			const side = el('div', 'panel', null);
+			side.style.position = 'fixed';
+			side.style.right = '16px';
+			side.style.top = '92px';
+			side.style.width = '360px';
+			side.style.maxWidth = '42vw';
+			side.style.maxHeight = '72vh';
+			side.style.overflow = 'hidden';
+			side.style.boxSizing = 'border-box';
+			side.style.zIndex = '50';
+
+			const head = el('div', '', null);
+			head.style.display = 'flex';
+			head.style.alignItems = 'baseline';
+			head.style.justifyContent = 'space-between';
+			head.style.gap = '10px';
+			const title = el('h3', '', '効果');
+			title.style.margin = '0';
+			const tag = el('span', 'deck-tooltip__ability-tag', '〈配置〉');
+			tag.style.flex = '0 0 auto';
+			head.appendChild(title);
+			head.appendChild(tag);
+			side.appendChild(head);
+
+			const name = el('p', 'muted', def && def.name ? String(def.name) : '—');
+			name.style.marginTop = '6px';
+			name.style.marginBottom = '8px';
+			side.appendChild(name);
+
+			const body = el('div', 'muted', null);
+			body.style.whiteSpace = 'pre-wrap';
+			body.style.wordBreak = 'break-word';
+			body.style.overflowWrap = 'anywhere';
+			body.style.lineHeight = '1.5';
+			body.style.maxHeight = '52vh';
+			body.style.overflow = 'auto';
+			body.style.paddingRight = '6px'; // scrollbar gutter-ish
+			const raw = battleCardAbilityTooltipText(def);
+			// 先頭行が「〈配置〉」等の場合は見出しと重複するので落とす
+			const lines = String(raw || '').split('\n');
+			const first = lines.length ? String(lines[0]).trim() : '';
+			body.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
+			side.appendChild(body);
+
+			document.body.appendChild(side);
+
+			ui._resolveTimer = window.setTimeout(function () {
+				ui._resolveTimer = null;
+				side.remove();
+				const prev = captureAnimRects();
+				resolvePending().then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+				}).catch(function (e) {
+					// eslint-disable-next-line no-console
+					console.error(e);
+					rerenderWithFreshState();
+				});
+			}, 3000);
+		}
+
+		if (st.phase === 'HUMAN_CHOICE' && st.pendingChoice && !st.gameOver) {
+			showChoiceModal(st);
+		}
 	}
 
 	function fillBattleLogList(lines) {
@@ -1204,6 +1680,7 @@
 		ui.selectedInstanceId = null;
 		ui.levelUpRest = 0;
 		ui.levelUpStones = 0;
+		ui.levelUpDiscardIds = [];
 		ui.warnLevelUpRest = null;
 		ui.warnLevelUpStone = null;
 		ui.sparkLevelUpRest = false;
@@ -1281,7 +1758,47 @@
 						rerenderWithFreshState().then(function () {
 							return fetchState();
 						}).then(function (st) {
-							showPayModal(st);
+							const sel = selectedCard(st);
+							if (!sel) return;
+
+							function proceedAfterDiscardConfirm() {
+								const def = resolveCardDef(st.defs, sel.cardId);
+								const cost = def ? Number(def.cost || 0) : 0;
+								if (cost <= 0) {
+									const prev = captureAnimRects();
+									const payload = {
+										levelUpRest: ui.levelUpRest,
+										levelUpDiscardInstanceIds: ui.levelUpDiscardIds,
+										levelUpStones: ui.levelUpStones,
+										deployInstanceId: sel.instanceId,
+										payCostStones: 0,
+										payCostCardInstanceIds: []
+									};
+									return commitAction(payload).then(function (next) {
+										ui.selectedInstanceId = null;
+										ui.levelUpRest = 0;
+										ui.levelUpStones = 0;
+										ui.levelUpDiscardIds = [];
+										ui.warnLevelUpRest = null;
+										ui.warnLevelUpStone = null;
+										ui._luPrevPowerInstanceId = null;
+										ui._luPrevPower = null;
+										ui.pay = { stones: 0, cardInstanceIds: [] };
+										render(next);
+										requestAnimationFrame(function () {
+											playFLIP(prev);
+										});
+									});
+								}
+								showPayModal(st);
+							}
+
+							if ((ui.levelUpRest | 0) > 0) {
+								showLevelUpDiscardConfirmModal(st, proceedAfterDiscardConfirm);
+								return;
+							}
+
+							proceedAfterDiscardConfirm();
 						});
 						return;
 					}

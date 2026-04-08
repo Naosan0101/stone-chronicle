@@ -5,6 +5,7 @@ import com.example.stonechronicle.domain.CardDefinition;
 import com.example.stonechronicle.service.CpuBattleService;
 import com.example.stonechronicle.service.DeckService;
 import com.example.stonechronicle.web.dto.CpuBattleCommitRequest;
+import com.example.stonechronicle.web.dto.CpuBattleChoiceRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -86,6 +87,7 @@ public class CpuBattleController {
 		var dto = cpuBattleService.humanCommit(
 				session,
 				req.levelUpRest(),
+				req.levelUpDiscardInstanceIds(),
 				req.levelUpStones(),
 				req.deployInstanceId(),
 				req.payCostStones(),
@@ -94,6 +96,30 @@ public class CpuBattleController {
 		if (dto == null) {
 			return ResponseEntity.notFound().build();
 		}
+		return ResponseEntity.ok(dto);
+	}
+
+	@PostMapping(value = "/cpu-step", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> cpuStep(HttpSession session) {
+		var dto = cpuBattleService.cpuStep(session);
+		if (dto == null) return ResponseEntity.notFound().build();
+		return ResponseEntity.ok(dto);
+	}
+
+	@PostMapping(value = "/resolve", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> resolve(HttpSession session) {
+		var dto = cpuBattleService.resolvePending(session);
+		if (dto == null) return ResponseEntity.notFound().build();
+		return ResponseEntity.ok(dto);
+	}
+
+	@PostMapping(value = "/choice", consumes = "application/json", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> choice(@RequestBody CpuBattleChoiceRequest req, HttpSession session) {
+		var dto = cpuBattleService.choose(session, req);
+		if (dto == null) return ResponseEntity.notFound().build();
 		return ResponseEntity.ok(dto);
 	}
 

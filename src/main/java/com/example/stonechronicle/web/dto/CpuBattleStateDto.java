@@ -7,6 +7,7 @@ public record CpuBattleStateDto(
 		int cpuLevel,
 		boolean humanGoesFirst,
 		boolean humansTurn,
+		String phase,
 		int humanStones,
 		int cpuStones,
 		List<BattleCardDto> humanDeck,
@@ -19,9 +20,13 @@ public record CpuBattleStateDto(
 		ZoneFighterDto cpuBattle,
 		int humanBattlePower,
 		int cpuBattlePower,
+		int humanNextDeployBonus,
+		int humanNextElfOnlyBonus,
 		String lastMessage,
 		boolean gameOver,
 		boolean humanWon,
+		PendingEffectDto pendingEffect,
+		PendingChoiceDto pendingChoice,
 		List<String> eventLog,
 		Map<Short, CardDefDto> defs
 ) {

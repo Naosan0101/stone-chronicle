@@ -33,6 +33,8 @@ public class CpuBattleEngine {
 		st.setHumansTurn(st.isHumanGoesFirst());
 		st.setHumanStones(0);
 		st.setCpuStones(0);
+		st.setHumanTurnStarts(0);
+		st.setCpuTurnStarts(0);
 
 		st.setHumanDeck(buildShuffledInstances(humanDeckCardIds, rnd));
 		st.setCpuDeck(buildShuffledInstances(buildCpuDeckIds(rnd), rnd));
@@ -76,9 +78,265 @@ public class CpuBattleEngine {
 		hand.add(0, deck.remove(0));
 	}
 
+	private void stagePendingDeployEffect(CpuBattleState st, boolean ownerHuman, CardDefinition mainDef, ZoneFighter zone) {
+		if (st == null || mainDef == null || zone == null || zone.getMain() == null) return;
+		String code = mainDef.getAbilityDeployCode();
+		// 配置能力が無い（効果なし）場合でも、表示→解決→ノック判定へ進む必要がある
+		st.setPendingEffect(new PendingEffect(ownerHuman, zone.getMain().getInstanceId(), zone.getMain().getCardId(), code));
+		st.setPhase(ownerHuman ? BattlePhase.HUMAN_EFFECT_PENDING : BattlePhase.CPU_EFFECT_PENDING);
+		st.setLastMessage("効果を処理中…");
+	}
+
+	public void resolvePendingEffectAndAdvance(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
+		if (st == null || st.isGameOver()) return;
+		PendingEffect pe = st.getPendingEffect();
+		if (pe == null) return;
+
+		// 効果適用（現時点では「選択/任意」の分岐は後続で実装する）
+		CardDefinition d = defs.get(pe.getCardId());
+		if (d != null) {
+			if (pe.isOwnerHuman()) {
+				applyDeployHuman(st, d, defs);
+			} else {
+				applyDeployCpu(st, d, defs, rnd != null ? rnd : new Random());
+			}
+		}
+
+		// 人間の選択が必要なら、ここで止める
+		if (st.getPendingChoice() != null && st.getPendingChoice().isForHuman()) {
+			st.setPhase(BattlePhase.HUMAN_CHOICE);
+			st.setLastMessage("選択してください");
+			return;
+		}
+
+		// 配置能力の結果を含めて強さ条件を満たす必要がある
+		if (pe.isOwnerHuman()) {
+			if (st.getCpuBattle() != null) {
+				int me = effectiveBattlePower(st.getHumanBattle(), true, st, defs);
+				int opp = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
+				if (me < opp) {
+					st.setGameOver(true);
+					st.setHumanWon(false);
+					st.setPhase(BattlePhase.GAME_OVER);
+					st.setLastMessage("敗北（能力後も相手以上になれません）");
+					st.addLog("敗北: 能力後も強さ条件を満たせない");
+					return;
+				}
+			}
+		} else {
+			if (st.getHumanBattle() != null) {
+				int cpu = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
+				int hum = effectiveBattlePower(st.getHumanBattle(), true, st, defs);
+				if (cpu < hum) {
+					st.setGameOver(true);
+					st.setHumanWon(true);
+					st.setPhase(BattlePhase.GAME_OVER);
+					st.setLastMessage("勝利（CPUが能力後も相手以上になれません）");
+					st.addLog("勝利: CPUが強さ条件を満たせない");
+					return;
+				}
+			}
+		}
+
+		st.setPendingEffect(null);
+
+		if (st.getPhase() == BattlePhase.HUMAN_EFFECT_PENDING) {
+			resolveKnockAndDraw(st, true, defs);
+			resetTurnBuffs(st);
+			st.setHumansTurn(false);
+			st.setPhase(BattlePhase.CPU_THINKING);
+			st.setLastMessage("CPUのターン");
+		} else if (st.getPhase() == BattlePhase.CPU_EFFECT_PENDING) {
+			resolveKnockAndDraw(st, false, defs);
+			resetTurnBuffs(st);
+			st.setHumansTurn(true);
+			st.setPhase(BattlePhase.HUMAN_INPUT);
+			st.setLastMessage("あなたのターン");
+		}
+	}
+
+	public void applyHumanChoiceAndAdvance(CpuBattleState st, boolean confirm, List<String> pickedInstanceIds,
+			Map<Short, CardDefinition> defs, Random rnd) {
+		if (st == null || st.isGameOver()) return;
+		PendingChoice pc = st.getPendingChoice();
+		if (pc == null || !pc.isForHuman()) return;
+
+		switch (pc.getKind()) {
+			case CONFIRM_OPTIONAL_STONE -> {
+				if (confirm && pc.getStoneCost() > 0 && st.getHumanStones() >= pc.getStoneCost()) {
+					st.setHumanStones(st.getHumanStones() - pc.getStoneCost());
+					st.addLog("ストーンを" + pc.getStoneCost() + "使用");
+					// ability ごとの追加処理
+					if ("SAMURAI".equals(pc.getAbilityDeployCode())) {
+						// CPUが捨てるカードを自動選択（簡易: 最右＝末尾）
+						if (!st.getCpuHand().isEmpty()) {
+							st.getCpuRest().add(st.getCpuHand().remove(st.getCpuHand().size() - 1));
+							st.addLog("CPUは手札を1枚レストへ");
+						}
+					} else if ("KOSAKUIN".equals(pc.getAbilityDeployCode())) {
+						// 交換対象を選ぶ
+						List<String> opts = new ArrayList<>();
+						for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
+						for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+						if (!opts.isEmpty()) {
+							st.setPendingChoice(new PendingChoice(
+									ChoiceKind.SELECT_SWAP_REST_AND_HAND,
+									"交換するカードを2枚選択（レスト1枚＋手札1枚）",
+									true,
+									"KOSAKUIN",
+									0,
+									opts
+							));
+							return;
+						}
+					} else if ("KAGAKUSHA".equals(pc.getAbilityDeployCode())) {
+						st.setPowerSwapActive(true);
+						st.addLog("科学者: 強さを入れ替えた");
+					} else if ("FUWAFUWA".equals(pc.getAbilityDeployCode())) {
+						if (st.getHumanBattle() != null) {
+							st.getHumanBattle().setReturnToHandOnKnock(true);
+							st.addLog("ふわふわ: 次に手札へ戻る");
+						}
+					} else if ("NIDONEBI".equals(pc.getAbilityDeployCode())) {
+						moveOneCardIdToDeckBottom(st.getHumanRest(), st.getHumanDeck(), (short) 23);
+						st.addLog("二度寝ゾンビ: デッキ最下段へ");
+					} else if ("RYUNOTAMAGO".equals(pc.getAbilityDeployCode())) {
+						// ドラゴンを選ぶ
+						List<String> opts = new ArrayList<>();
+						for (BattleCard c : st.getHumanRest()) {
+							if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) opts.add(c.getInstanceId());
+						}
+						if (!opts.isEmpty()) {
+							st.setPendingChoice(new PendingChoice(
+									ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+									"ドラゴンの卵（レストのドラゴンを選択）",
+									true,
+									"RYUNOTAMAGO",
+									0,
+									opts
+							));
+							return;
+						}
+					} else if ("KORYU".equals(pc.getAbilityDeployCode())) {
+						int elves = countAttributeInRest(st.getHumanRest(), defs, "ELF");
+						if (st.getHumanBattle() != null && elves > 0) {
+							st.getHumanBattle().setTemporaryPowerBonus(st.getHumanBattle().getTemporaryPowerBonus() + elves);
+							st.addLog("古竜: +" + elves);
+						}
+					}
+				} else {
+					st.addLog("効果を使用しなかった");
+				}
+			}
+			case SELECT_ONE_FROM_HAND_TO_REST -> {
+				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) return;
+				BattleCard c = removeByInstanceId(st.getHumanHand(), pickedInstanceIds.get(0));
+				if (c != null) {
+					st.getHumanRest().add(c);
+					st.addLog("手札を1枚レストへ");
+				}
+			}
+			case SELECT_ONE_FROM_REST_TO_HAND -> {
+				if (pickedInstanceIds == null || pickedInstanceIds.size() != 1) return;
+				BattleCard c = removeByInstanceId(st.getHumanRest(), pickedInstanceIds.get(0));
+				if (c != null) {
+					st.getHumanHand().add(0, c);
+					st.addLog("レストから手札へ");
+				}
+			}
+			case SELECT_SWAP_REST_AND_HAND -> {
+				if (pickedInstanceIds == null || pickedInstanceIds.size() != 2) return;
+				String a = pickedInstanceIds.get(0);
+				String b = pickedInstanceIds.get(1);
+				BattleCard restC = removeByInstanceId(st.getHumanRest(), a);
+				BattleCard handC = removeByInstanceId(st.getHumanHand(), b);
+				if (restC == null || handC == null) {
+					// 逆順を試す
+					if (restC != null) st.getHumanRest().add(restC);
+					if (handC != null) st.getHumanHand().add(handC);
+					restC = removeByInstanceId(st.getHumanRest(), b);
+					handC = removeByInstanceId(st.getHumanHand(), a);
+				}
+				if (restC != null && handC != null) {
+					st.getHumanRest().add(handC);
+					st.getHumanHand().add(0, restC);
+					st.addLog("レストと手札を交換");
+				}
+			}
+		}
+
+		st.setPendingChoice(null);
+		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_EFFECT_PENDING : BattlePhase.CPU_EFFECT_PENDING);
+		st.setLastMessage("効果を処理中…");
+		// choice は「配置効果の続き」なので、resolve をもう一度呼べば進む設計（UI側で即 resolve してもOK）
+	}
+
+	private void beginTurnGainStone(CpuBattleState st, boolean forHuman) {
+		if (st == null || st.isGameOver()) {
+			return;
+		}
+
+		boolean isFirstPlayersFirstTurn = forHuman
+				? (st.isHumanGoesFirst() && st.getHumanTurnStarts() == 0)
+				: (!st.isHumanGoesFirst() && st.getCpuTurnStarts() == 0);
+
+		if (forHuman) {
+			st.setHumanTurnStarts(st.getHumanTurnStarts() + 1);
+		} else {
+			st.setCpuTurnStarts(st.getCpuTurnStarts() + 1);
+		}
+
+		if (isFirstPlayersFirstTurn) {
+			st.addLog(forHuman ? "あなたの先攻1ターン目: ストーン獲得なし" : "CPUの先攻1ターン目: ストーン獲得なし");
+			return;
+		}
+
+		if (forHuman) {
+			st.setHumanStones(st.getHumanStones() + 1);
+			st.addLog("ストーンを1つ得た");
+		} else {
+			st.setCpuStones(st.getCpuStones() + 1);
+			st.addLog("CPUはストーンを1つ得た");
+		}
+	}
+
+	private CpuBattleState copyState(CpuBattleState st) {
+		CpuBattleState ns = new CpuBattleState();
+		ns.setCpuLevel(st.getCpuLevel());
+		ns.setHumanGoesFirst(st.isHumanGoesFirst());
+		ns.setHumansTurn(st.isHumansTurn());
+		ns.setHumanTurnStarts(st.getHumanTurnStarts());
+		ns.setCpuTurnStarts(st.getCpuTurnStarts());
+		ns.setHumanStones(st.getHumanStones());
+		ns.setCpuStones(st.getCpuStones());
+		ns.setLastMessage(st.getLastMessage());
+		ns.setGameOver(st.isGameOver());
+		ns.setHumanWon(st.isHumanWon());
+		ns.setEventLog(new ArrayList<>(st.getEventLog()));
+
+		ns.setHumanDeck(copyCards(st.getHumanDeck()));
+		ns.setHumanHand(copyCards(st.getHumanHand()));
+		ns.setHumanRest(copyCards(st.getHumanRest()));
+		ns.setHumanBattle(copyZone(st.getHumanBattle()));
+
+		ns.setCpuDeck(copyCards(st.getCpuDeck()));
+		ns.setCpuHand(copyCards(st.getCpuHand()));
+		ns.setCpuRest(copyCards(st.getCpuRest()));
+		ns.setCpuBattle(copyZone(st.getCpuBattle()));
+		return ns;
+	}
+
 	public void humanTurn(CpuBattleState st, int levelUpRest, int levelUpStones, boolean deploy, int deployHandIndex,
 			Map<Short, CardDefinition> defs) {
 		if (st.isGameOver() || !st.isHumansTurn()) {
+			return;
+		}
+		beginTurnGainStone(st, true);
+		if (st.getCpuBattle() != null && !canMakeLegalDeploy(st, true, defs)) {
+			st.setGameOver(true);
+			st.setHumanWon(false);
+			st.setLastMessage("敗北（相手以上のファイターを出せません）");
+			st.addLog("敗北: 相手以上のファイターを出せない");
 			return;
 		}
 		if (levelUpStones < 0 || levelUpRest < 0 || levelUpStones > st.getHumanStones()) {
@@ -104,6 +362,10 @@ public class CpuBattleEngine {
 			CardDefinition mainDef = defs.get(main.getCardId());
 			int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
 			deployBonus = levelUpRest * perRest + levelUpStones * 2;
+			deployBonus += st.getHumanNextDeployBonus();
+			if (st.getHumanNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
+				deployBonus += st.getHumanNextElfOnlyBonus();
+			}
 			if (!canDeployWithHand(simHand, deployHandIndex, defs, deployBonus, st, true)) {
 				st.setLastMessage("配置条件（強さ・コスト）を満たせません");
 				return;
@@ -128,6 +390,9 @@ public class CpuBattleEngine {
 			z.setMain(main);
 			z.setCostUnder(paid);
 			z.setTemporaryPowerBonus(deployBonus);
+			// 次回配置ボーナス消費
+			st.setHumanNextDeployBonus(0);
+			st.setHumanNextElfOnlyBonus(0);
 			st.setHumanBattle(z);
 			applyDeployHuman(st, mainDef, defs);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
@@ -145,10 +410,18 @@ public class CpuBattleEngine {
 	 * クリックUI向け: 手札の instanceId で配置カード・支払いカードを指定し、配置コストは「カード/ストーン/分割」で支払える。
 	 * levelUpRest は右端からレストへ捨てる枚数、levelUpStones は強化回数（1回=+2、ストーン1消費）。
 	 */
-	public void humanTurnInteractive(CpuBattleState st, int levelUpRest, int levelUpStones,
+	public void humanTurnInteractive(CpuBattleState st, int levelUpRest, List<String> levelUpDiscardInstanceIds, int levelUpStones,
 			String deployInstanceId, int payCostStones, List<String> payCostCardInstanceIds,
 			Map<Short, CardDefinition> defs) {
-		if (st == null || st.isGameOver() || !st.isHumansTurn()) {
+		if (st == null || st.isGameOver() || !st.isHumansTurn() || st.getPhase() != BattlePhase.HUMAN_INPUT) {
+			return;
+		}
+		beginTurnGainStone(st, true);
+		if (st.getCpuBattle() != null && !canMakeLegalDeploy(st, true, defs)) {
+			st.setGameOver(true);
+			st.setHumanWon(false);
+			st.setLastMessage("敗北（相手以上のファイターを出せません）");
+			st.addLog("敗北: 相手以上のファイターを出せない");
 			return;
 		}
 		if (levelUpRest < 0 || levelUpStones < 0) {
@@ -170,10 +443,32 @@ public class CpuBattleEngine {
 			return;
 		}
 
+		// レベルアップで捨てるカード指定（任意指定。未指定の場合のみ旧挙動＝右端）
+		List<String> discIds = levelUpDiscardInstanceIds != null ? levelUpDiscardInstanceIds : List.of();
+		long distinct = discIds.stream().distinct().count();
+		if (distinct != discIds.size()) {
+			st.setLastMessage("捨てるカード指定が重複しています");
+			return;
+		}
+		if (!discIds.isEmpty() && discIds.size() != levelUpRest) {
+			st.setLastMessage("捨てるカードの枚数が一致しません");
+			return;
+		}
+
 		// シミュレーション（レベルアップ後の手札）
 		List<BattleCard> simHand = new ArrayList<>(st.getHumanHand());
-		for (int i = 0; i < levelUpRest; i++) {
-			simHand.remove(simHand.size() - 1);
+		if (!discIds.isEmpty()) {
+			for (String did : discIds) {
+				BattleCard c = removeByInstanceId(simHand, did);
+				if (c == null) {
+					st.setLastMessage("捨てるカードが手札にありません");
+					return;
+				}
+			}
+		} else {
+			for (int i = 0; i < levelUpRest; i++) {
+				simHand.remove(simHand.size() - 1);
+			}
 		}
 
 		int deployBonus = 0;
@@ -191,6 +486,10 @@ public class CpuBattleEngine {
 				st.setLastMessage("配置カードが見つかりません");
 				return;
 			}
+			if (!discIds.isEmpty() && discIds.contains(simMain.getInstanceId())) {
+				st.setLastMessage("配置カードを捨てることはできません");
+				return;
+			}
 			mainDef = defs.get(simMain.getCardId());
 			if (mainDef == null) {
 				st.setLastMessage("カード定義が見つかりません");
@@ -198,13 +497,17 @@ public class CpuBattleEngine {
 			}
 			int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
 			deployBonus = levelUpRest * perRest + levelUpStones * 2;
+			deployBonus += st.getHumanNextDeployBonus();
+			if (st.getHumanNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
+				deployBonus += st.getHumanNextElfOnlyBonus();
+			}
 			cost = mainDef.getCost();
 			simHand.remove(simMain);
 
 			// 支払いチェック
 			List<String> payIds = payCostCardInstanceIds != null ? payCostCardInstanceIds : List.of();
-			long distinct = payIds.stream().distinct().count();
-			if (distinct != payIds.size()) {
+			long payDistinct = payIds.stream().distinct().count();
+			if (payDistinct != payIds.size()) {
 				st.setLastMessage("支払いカードが重複しています");
 				return;
 			}
@@ -249,9 +552,21 @@ public class CpuBattleEngine {
 
 		// ここから確定適用
 		st.setHumanStones(st.getHumanStones() - levelUpStones);
-		for (int i = 0; i < levelUpRest; i++) {
-			BattleCard c = st.getHumanHand().remove(st.getHumanHand().size() - 1);
-			st.getHumanRest().add(c);
+		List<BattleCard> levelUpCards = new ArrayList<>();
+		if (!discIds.isEmpty()) {
+			for (String did : discIds) {
+				BattleCard c = removeByInstanceId(st.getHumanHand(), did);
+				if (c == null) {
+					st.setLastMessage("捨てるカードが手札にありません");
+					return;
+				}
+				levelUpCards.add(c);
+			}
+		} else {
+			for (int i = 0; i < levelUpRest; i++) {
+				BattleCard c = st.getHumanHand().remove(st.getHumanHand().size() - 1);
+				levelUpCards.add(c);
+			}
 		}
 
 		if (simMain != null && mainDef != null) {
@@ -276,21 +591,27 @@ public class CpuBattleEngine {
 				}
 				paid.add(p);
 			}
+			// レベルアップで使用したカードは、配置カードの下に重ねる（レストへは行かない）
+			paid.addAll(levelUpCards);
 
 			ZoneFighter z = new ZoneFighter();
 			z.setMain(main);
 			z.setCostUnder(paid);
 			z.setTemporaryPowerBonus(deployBonus);
+			st.setHumanNextDeployBonus(0);
+			st.setHumanNextElfOnlyBonus(0);
 			st.setHumanBattle(z);
-			applyDeployHuman(st, mainDef, defs);
 			st.addLog("あなたは「" + mainDef.getName() + "」を配置した");
+			stagePendingDeployEffect(st, true, mainDef, z);
 		} else {
 			st.addLog("あなたは配置をスキップした");
+			// 配置しない場合、レベルアップで使ったカードはレストへ
+			st.getHumanRest().addAll(levelUpCards);
+			resolveKnockAndDraw(st, true, defs);
+			resetTurnBuffs(st);
+			st.setHumansTurn(false);
+			st.setPhase(BattlePhase.CPU_THINKING);
 		}
-
-		resolveKnockAndDraw(st, true, defs);
-		resetTurnBuffs(st);
-		st.setHumansTurn(false);
 		st.setLastMessage("CPUのターン");
 	}
 
@@ -395,7 +716,15 @@ public class CpuBattleEngine {
 	}
 
 	public void cpuTurn(CpuBattleState st, Map<Short, CardDefinition> defs, Random rnd) {
-		if (st.isGameOver() || st.isHumansTurn()) {
+		if (st.isGameOver() || st.isHumansTurn() || st.getPhase() != BattlePhase.CPU_THINKING) {
+			return;
+		}
+		beginTurnGainStone(st, false);
+		if (st.getHumanBattle() != null && !canMakeLegalDeploy(st, false, defs)) {
+			st.setGameOver(true);
+			st.setHumanWon(true);
+			st.setLastMessage("勝利（CPUが相手以上のファイターを出せません）");
+			st.addLog("勝利: CPUが相手以上のファイターを出せない");
 			return;
 		}
 
@@ -405,68 +734,104 @@ public class CpuBattleEngine {
 		int bestLevelUpRest = 0;
 		int bestLevelUpStones = 0;
 		int bestDeployBonus = 0;
-		int bestScore = Integer.MIN_VALUE;
-		int bestCpuEff = -1;
+		List<String> bestLevelUpDiscardIds = List.of();
+		boolean hasOpp = st.getHumanBattle() != null;
+		int bestScore = Integer.MIN_VALUE; // 相手がいないとき用
+		int bestCpuEff = hasOpp ? Integer.MAX_VALUE : -1;
+		int bestResource = Integer.MAX_VALUE;
 
 		int maxRest = st.getCpuHand().size();
 		int maxStones = Math.max(0, st.getCpuStones());
 
 		for (int levelUpRest = 0; levelUpRest <= maxRest; levelUpRest++) {
+			List<List<String>> discardPlans = cpuDiscardPlans(st.getCpuHand(), levelUpRest);
 			for (int levelUpStones = 0; levelUpStones <= maxStones; levelUpStones++) {
 				for (BattleCard main : st.getCpuHand()) {
 					CardDefinition mainDef = defs.get(main.getCardId());
 					if (mainDef == null) continue;
 
-					int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
-					int deployBonus = levelUpRest * perRest + levelUpStones * 2;
+					for (List<String> discIds : discardPlans) {
+						if (discIds.contains(main.getInstanceId())) {
+							continue; // 配置カードをレベルアップで捨てることはできない
+						}
 
-					// シミュレーション：レベルアップ→配置→配置効果→常時計算（effectiveBattlePower）
-					CpuBattleState simSt = copyStateForCpuSim(st);
-					simSt.setHumansTurn(false);
-					simSt.setGameOver(false);
+						int perRest = "SHOKIN".equals(mainDef.getAbilityDeployCode()) ? 3 : 2;
+						int deployBonus = levelUpRest * perRest + levelUpStones * 2;
+						deployBonus += st.getCpuNextDeployBonus();
+						if (st.getCpuNextElfOnlyBonus() > 0 && CardAttributes.hasAttribute(mainDef, "ELF")) {
+							deployBonus += st.getCpuNextElfOnlyBonus();
+						}
 
-					if (levelUpStones > simSt.getCpuStones()) continue;
-					simSt.setCpuStones(simSt.getCpuStones() - levelUpStones);
-					for (int i = 0; i < levelUpRest; i++) {
-						discardRightmost(simSt.getCpuHand(), simSt.getCpuRest());
-					}
+						// シミュレーション：レベルアップ→配置→配置効果→常時計算（effectiveBattlePower）
+						CpuBattleState simSt = copyStateForCpuSim(st);
+						simSt.setHumansTurn(false);
+						simSt.setGameOver(false);
 
-					if (!canPayCostWithHand(simSt.getCpuHand(), main.getInstanceId(), defs)) {
-						continue;
-					}
+						if (levelUpStones > simSt.getCpuStones()) continue;
+						simSt.setCpuStones(simSt.getCpuStones() - levelUpStones);
 
-					// 配置カードを取り出す
-					BattleCard simMain = removeByInstanceId(simSt.getCpuHand(), main.getInstanceId());
-					if (simMain == null) continue;
-					int cost = mainDef.getCost();
-					List<BattleCard> paid = new ArrayList<>();
-					for (int i = 0; i < cost; i++) {
-						if (simSt.getCpuHand().isEmpty()) break;
-						paid.add(simSt.getCpuHand().remove(simSt.getCpuHand().size() - 1));
-					}
-					ZoneFighter z = new ZoneFighter();
-					z.setMain(simMain);
-					z.setCostUnder(paid);
-					z.setTemporaryPowerBonus(deployBonus);
-					simSt.setCpuBattle(z);
+						// レベルアップ捨て（CPUが選ぶ）
+						for (String did : discIds) {
+							BattleCard dc = removeByInstanceId(simSt.getCpuHand(), did);
+							if (dc != null) {
+								simSt.getCpuRest().add(dc);
+							}
+						}
 
-					Random simRnd = new Random(31_337L ^ main.getCardId() ^ (levelUpRest * 31L) ^ (levelUpStones * 131L));
-					applyDeployCpu(simSt, mainDef, defs, simRnd);
+						if (!canPayCostWithHand(simSt.getCpuHand(), main.getInstanceId(), defs)) {
+							continue;
+						}
 
-					int cpuEff = effectiveBattlePower(simSt.getCpuBattle(), false, simSt, defs);
-					int oppEff = effectiveBattlePower(simSt.getHumanBattle(), true, simSt, defs);
-					if (simSt.getHumanBattle() != null && cpuEff < oppEff) {
-						continue;
-					}
+						// 配置カードを取り出す
+						BattleCard simMain = removeByInstanceId(simSt.getCpuHand(), main.getInstanceId());
+						if (simMain == null) continue;
+						int cost = mainDef.getCost();
+						List<BattleCard> paid = new ArrayList<>();
+						for (int i = 0; i < cost; i++) {
+							if (simSt.getCpuHand().isEmpty()) break;
+							paid.add(simSt.getCpuHand().remove(simSt.getCpuHand().size() - 1));
+						}
+						ZoneFighter z = new ZoneFighter();
+						z.setMain(simMain);
+						z.setCostUnder(paid);
+						z.setTemporaryPowerBonus(deployBonus);
+						simSt.setCpuBattle(z);
 
-					int score = cpuEff - oppEff;
-					if (score > bestScore || (score == bestScore && cpuEff > bestCpuEff)) {
-						bestScore = score;
-						bestCpuEff = cpuEff;
-						bestInstanceId = main.getInstanceId();
-						bestLevelUpRest = levelUpRest;
-						bestLevelUpStones = levelUpStones;
-						bestDeployBonus = deployBonus;
+						Random simRnd = new Random(31_337L ^ main.getCardId() ^ (levelUpRest * 31L) ^ (levelUpStones * 131L));
+						applyDeployCpu(simSt, mainDef, defs, simRnd);
+
+						int cpuEff = effectiveBattlePower(simSt.getCpuBattle(), false, simSt, defs);
+						int oppEff = effectiveBattlePower(simSt.getHumanBattle(), true, simSt, defs);
+						if (simSt.getHumanBattle() != null && cpuEff < oppEff) {
+							continue;
+						}
+
+						if (hasOpp) {
+							// 相手をレストにできる中で「必要最低値の強さ」を選ぶ
+							int resource = levelUpRest + levelUpStones;
+							if (cpuEff < bestCpuEff
+									|| (cpuEff == bestCpuEff && resource < bestResource)) {
+								bestCpuEff = cpuEff;
+								bestResource = resource;
+								bestInstanceId = main.getInstanceId();
+								bestLevelUpRest = levelUpRest;
+								bestLevelUpStones = levelUpStones;
+								bestDeployBonus = deployBonus;
+								bestLevelUpDiscardIds = discIds;
+							}
+						} else {
+							// 相手がいないときは従来通り「強くなる」配置を優先
+							int score = cpuEff - oppEff;
+							if (score > bestScore || (score == bestScore && cpuEff > bestCpuEff)) {
+								bestScore = score;
+								bestCpuEff = cpuEff;
+								bestInstanceId = main.getInstanceId();
+								bestLevelUpRest = levelUpRest;
+								bestLevelUpStones = levelUpStones;
+								bestDeployBonus = deployBonus;
+								bestLevelUpDiscardIds = discIds;
+							}
+						}
 					}
 				}
 			}
@@ -474,12 +839,16 @@ public class CpuBattleEngine {
 
 		boolean deployed = false;
 		if (bestInstanceId != null) {
-			// レベルアップ確定（右端からレストへ）
+			// レベルアップ確定（CPUが選んだカードをレストへ）
 			if (bestLevelUpStones <= st.getCpuStones()) {
 				st.setCpuStones(st.getCpuStones() - bestLevelUpStones);
 			}
-			for (int i = 0; i < bestLevelUpRest; i++) {
-				discardRightmost(st.getCpuHand(), st.getCpuRest());
+			List<BattleCard> levelUpCards = new ArrayList<>();
+			for (String did : bestLevelUpDiscardIds) {
+				BattleCard dc = removeByInstanceId(st.getCpuHand(), did);
+				if (dc != null) {
+					levelUpCards.add(dc);
+				}
 			}
 
 			if (canPayCostWithHand(st.getCpuHand(), bestInstanceId, defs)) {
@@ -493,49 +862,72 @@ public class CpuBattleEngine {
 							if (st.getCpuHand().isEmpty()) break;
 							paid.add(st.getCpuHand().remove(st.getCpuHand().size() - 1));
 						}
+						paid.addAll(levelUpCards);
 						ZoneFighter z = new ZoneFighter();
 						z.setMain(main);
 						z.setCostUnder(paid);
 						z.setTemporaryPowerBonus(bestDeployBonus);
+						st.setCpuNextDeployBonus(0);
+						st.setCpuNextElfOnlyBonus(0);
 						st.setCpuBattle(z);
-						applyDeployCpu(st, mainDef, defs, rnd);
 						st.addLog("CPUは「" + mainDef.getName() + "」を配置した");
 						deployed = true;
+						stagePendingDeployEffect(st, false, mainDef, z);
 					}
 				}
+			}
+			if (!deployed) {
+				// 配置できなかった場合は、レベルアップで使ったカードはレストへ
+				st.getCpuRest().addAll(levelUpCards);
 			}
 		}
 
 		if (!deployed) {
 			st.addLog("CPUは配置しなかった");
+			resolveKnockAndDraw(st, false, defs);
+			resetTurnBuffs(st);
+			st.setHumansTurn(true);
+			st.setPhase(BattlePhase.HUMAN_INPUT);
+			st.setLastMessage("あなたのターン");
+			return;
 		}
-		resolveKnockAndDraw(st, false, defs);
-		resetTurnBuffs(st);
-		st.setHumansTurn(true);
-		st.setLastMessage("あなたのターン");
 	}
 
 	private void resolveKnockAndDraw(CpuBattleState st, boolean humanWasActing, Map<Short, CardDefinition> defs) {
 		if (humanWasActing) {
-			if (st.getCpuBattle() != null) {
-				moveZoneToRest(st.getCpuBattle(), st.getCpuRest());
+			// 相手ファイターをレストへ（自分が配置している場合のみ）
+			if (st.getHumanBattle() != null && st.getCpuBattle() != null) {
+				boolean returned = moveZoneToRestOrReturnToHand(st.getCpuBattle(), st.getCpuRest(), st.getCpuHand());
 				st.setCpuBattle(null);
-				st.setCpuStones(st.getCpuStones() + 1);
-				st.addLog("相手ファイターをレストへ。CPUはストーンを1つ得た");
+				st.addLog(returned ? "相手ファイターは手札へ戻った" : "相手ファイターをレストへ");
 			}
 			while (st.getHumanHand().size() < 4 && !st.getHumanDeck().isEmpty()) {
 				drawOne(st.getHumanDeck(), st.getHumanHand());
 			}
 		} else {
-			if (st.getHumanBattle() != null) {
-				moveZoneToRest(st.getHumanBattle(), st.getHumanRest());
+			if (st.getCpuBattle() != null && st.getHumanBattle() != null) {
+				boolean returned = moveZoneToRestOrReturnToHand(st.getHumanBattle(), st.getHumanRest(), st.getHumanHand());
 				st.setHumanBattle(null);
-				st.setHumanStones(st.getHumanStones() + 1);
-				st.addLog("あなたのファイターがレストへ。ストーンを1つ得た");
+				st.addLog(returned ? "あなたのファイターは手札へ戻った" : "あなたのファイターがレストへ");
 			}
 			while (st.getCpuHand().size() < 4 && !st.getCpuDeck().isEmpty()) {
 				drawOne(st.getCpuDeck(), st.getCpuHand());
 			}
+		}
+	}
+
+	private boolean moveZoneToRestOrReturnToHand(ZoneFighter z, List<BattleCard> rest, List<BattleCard> hand) {
+		if (z == null || z.getMain() == null) return false;
+		// コストカードは常にレストへ
+		for (BattleCard c : z.getCostUnder()) {
+			rest.add(c);
+		}
+		if (z.isReturnToHandOnKnock()) {
+			hand.add(0, z.getMain());
+			return true;
+		} else {
+			rest.add(z.getMain());
+			return false;
 		}
 	}
 
@@ -556,9 +948,20 @@ public class CpuBattleEngine {
 		if (st.getCpuBattle() != null) {
 			st.getCpuBattle().setTemporaryPowerBonus(0);
 		}
+		st.setPowerSwapActive(false);
 	}
 
 	public int effectiveBattlePower(ZoneFighter zf, boolean ownerIsHuman, CpuBattleState st,
+			Map<Short, CardDefinition> defs) {
+		if (st != null && st.isPowerSwapActive()) {
+			int humanEff = effectiveBattlePowerNoSwap(st.getHumanBattle(), true, st, defs);
+			int cpuEff = effectiveBattlePowerNoSwap(st.getCpuBattle(), false, st, defs);
+			return ownerIsHuman ? cpuEff : humanEff;
+		}
+		return effectiveBattlePowerNoSwap(zf, ownerIsHuman, st, defs);
+	}
+
+	private int effectiveBattlePowerNoSwap(ZoneFighter zf, boolean ownerIsHuman, CpuBattleState st,
 			Map<Short, CardDefinition> defs) {
 		if (zf == null || zf.getMain() == null) {
 			return 0;
@@ -656,14 +1059,148 @@ public class CpuBattleEngine {
 				}
 			}
 			case "SAMURAI" -> {
-				if (!st.getCpuHand().isEmpty()) {
-					int r = new Random().nextInt(st.getCpuHand().size());
-					st.getCpuRest().add(st.getCpuHand().remove(r));
-					st.addLog("サムライ: CPUの手札を1枚レストへ");
+				if (st.getHumanStones() >= 1 && !st.getCpuHand().isEmpty()) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"サムライ",
+							true,
+							"SAMURAI",
+							1,
+							List.of()
+					));
+				}
+			}
+			case "KOSAKUIN" -> {
+				// ストーン不足 or 交換対象がないならポップアップ不要
+				if (st.getHumanStones() >= 1 && !st.getHumanRest().isEmpty() && !st.getHumanHand().isEmpty()) {
+					List<String> opts = new ArrayList<>();
+					for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
+					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"工作員（ストーン1使用）",
+							true,
+							"KOSAKUIN",
+							1,
+							opts
+					));
+				}
+			}
+			case "KAGAKUSHA" -> {
+				if (st.getHumanStones() >= 1 && st.getHumanBattle() != null && st.getCpuBattle() != null) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"科学者（ストーン1使用）",
+							true,
+							"KAGAKUSHA",
+							1,
+							List.of()
+					));
+				}
+			}
+			case "OKAMI_OTOKO" -> {
+				if (st.getHumanBattle() != null) {
+					swapMainWithWolfIfPaid(st.getHumanBattle());
+				}
+			}
+			case "MIKO" -> {
+				st.setHumanNextDeployBonus(st.getHumanNextDeployBonus() + 2);
+				st.addLog("巫女: 次の配置+2");
+			}
+			case "YOSEI" -> {
+				st.setHumanNextElfOnlyBonus(st.getHumanNextElfOnlyBonus() + 4);
+				st.addLog("妖精: 次のエルフ配置+4");
+			}
+			case "KINOKO" -> {
+				if (!st.getHumanRest().isEmpty()) {
+					List<String> opts = new ArrayList<>();
+					for (BattleCard c : st.getHumanRest()) opts.add(c.getInstanceId());
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_REST_TO_HAND,
+							"きのこ拾い（レストから1枚選択）",
+							true,
+							"KINOKO",
+							0,
+							opts
+					));
+				}
+			}
+			case "NOROWARETA" -> {
+				if (!st.getHumanRest().isEmpty()) {
+					int r = new Random().nextInt(st.getHumanRest().size());
+					BattleCard c = st.getHumanRest().remove(r);
+					st.getHumanDeck().add(0, c);
+					Collections.shuffle(st.getHumanDeck(), new Random());
+					st.addLog("呪われた亡者: レストから1枚をデッキへ戻しシャッフル");
+				}
+			}
+			case "FUWAFUWA" -> {
+				if (st.getHumanStones() >= 1 && st.getHumanBattle() != null) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"ふわふわゴースト（ストーン1使用）",
+							true,
+							"FUWAFUWA",
+							1,
+							List.of()
+					));
+				}
+			}
+			case "NIDONEBI" -> {
+				if (st.getHumanStones() >= 1 && restContainsCardId(st.getHumanRest(), (short) 23)) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"二度寝ゾンビ（ストーン1使用）",
+							true,
+							"NIDONEBI",
+							1,
+							List.of()
+					));
+				}
+			}
+			case "RYUNOTAMAGO" -> {
+				if (st.getHumanStones() >= 2 && restContainsAttribute(st.getHumanRest(), defs, "DRAGON")) {
+					List<String> opts = new ArrayList<>();
+					for (BattleCard c : st.getHumanRest()) {
+						if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) opts.add(c.getInstanceId());
+					}
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"ドラゴンの卵（ストーン2使用）",
+							true,
+							"RYUNOTAMAGO",
+							2,
+							opts
+					));
+				}
+			}
+			case "KORYU" -> {
+				if (st.getHumanStones() >= 1 && st.getHumanBattle() != null) {
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.CONFIRM_OPTIONAL_STONE,
+							"古竜（ストーン1使用）",
+							true,
+							"KORYU",
+							1,
+							List.of()
+					));
 				}
 			}
 			case "KENTOSHI" -> {
-				discardRightmost(st.getHumanHand(), st.getHumanRest());
+				// 人間は選んで捨てる、CPUは自動で捨てる
+				if (!st.getHumanHand().isEmpty()) {
+					List<String> opts = new ArrayList<>();
+					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+							"剣闘士（捨てるカードを選択）",
+							true,
+							"KENTOSHI",
+							0,
+							opts
+					));
+				}
+				// CPU側は自動（簡易: 右端）
 				discardRightmost(st.getCpuHand(), st.getCpuRest());
 				st.addLog("剣闘士: お互い手札を1枚レストへ");
 			}
@@ -718,14 +1255,37 @@ public class CpuBattleEngine {
 				}
 			}
 			case "SAMURAI" -> {
-				if (!st.getHumanHand().isEmpty()) {
-					int r = rnd.nextInt(st.getHumanHand().size());
-					st.getHumanRest().add(st.getHumanHand().remove(r));
-					st.addLog("CPUサムライ: あなたの手札を1枚レストへ");
+				// CPUは自動判断。ストーンがあり、相手手札があるなら使う（簡易）
+				if (st.getCpuStones() >= 1 && !st.getHumanHand().isEmpty()) {
+					st.setCpuStones(st.getCpuStones() - 1);
+					// 人間に選ばせる
+					List<String> opts = new ArrayList<>();
+					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+							"サムライ（捨てるカードを選択）",
+							true,
+							"SAMURAI",
+							0,
+							opts
+					));
+					st.addLog("CPUサムライ: ストーン1使用。手札を1枚レストへ（選択）");
 				}
 			}
 			case "KENTOSHI" -> {
-				discardRightmost(st.getHumanHand(), st.getHumanRest());
+				// CPUが出した場合：人間は選んで捨てる、CPUは自動で捨てる
+				if (!st.getHumanHand().isEmpty()) {
+					List<String> opts = new ArrayList<>();
+					for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+					st.setPendingChoice(new PendingChoice(
+							ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+							"剣闘士（捨てるカードを選択）",
+							true,
+							"KENTOSHI",
+							0,
+							opts
+					));
+				}
 				discardRightmost(st.getCpuHand(), st.getCpuRest());
 			}
 			case "KARYUDO" -> {
@@ -749,14 +1309,247 @@ public class CpuBattleEngine {
 			case "KAZE_MAJIN" -> {
 				st.setCpuStones(st.getCpuStones() + 2);
 			}
+			case "KOSAKUIN" -> {
+				// CPUは交換が得なら実行（簡易: 可能なら実行）
+				if (st.getCpuStones() >= 1 && !st.getCpuRest().isEmpty() && !st.getCpuHand().isEmpty()) {
+					st.setCpuStones(st.getCpuStones() - 1);
+					// 適当: restの最後とhandの最後を交換
+					BattleCard r = st.getCpuRest().remove(st.getCpuRest().size() - 1);
+					BattleCard h = st.getCpuHand().remove(st.getCpuHand().size() - 1);
+					st.getCpuRest().add(h);
+					st.getCpuHand().add(0, r);
+					st.addLog("CPU工作員: レストと手札を交換");
+				}
+			}
+			case "KAGAKUSHA" -> {
+				if (st.getCpuStones() >= 1 && st.getHumanBattle() != null && st.getCpuBattle() != null) {
+					// 簡易: 使う（強さ差がひっくり返るなら得）
+					int cpuEff = effectiveBattlePower(st.getCpuBattle(), false, st, defs);
+					int humEff = effectiveBattlePower(st.getHumanBattle(), true, st, defs);
+					if (cpuEff < humEff) {
+						st.setCpuStones(st.getCpuStones() - 1);
+						st.setPowerSwapActive(true);
+						st.addLog("CPU科学者: 強さを入れ替えた");
+					}
+				}
+			}
+			case "OKAMI_OTOKO" -> {
+				if (st.getCpuBattle() != null) {
+					swapMainWithWolfIfPaid(st.getCpuBattle());
+				}
+			}
+			case "MIKO" -> {
+				st.setCpuNextDeployBonus(st.getCpuNextDeployBonus() + 2);
+			}
+			case "YOSEI" -> {
+				st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + 4);
+			}
+			case "KINOKO" -> {
+				if (!st.getCpuRest().isEmpty()) {
+					// 簡易: 最後の1枚を回収
+					BattleCard c = st.getCpuRest().remove(st.getCpuRest().size() - 1);
+					st.getCpuHand().add(0, c);
+				}
+			}
+			case "NOROWARETA" -> {
+				if (!st.getCpuRest().isEmpty()) {
+					int r = rnd.nextInt(st.getCpuRest().size());
+					BattleCard c = st.getCpuRest().remove(r);
+					st.getCpuDeck().add(0, c);
+					Collections.shuffle(st.getCpuDeck(), rnd);
+				}
+			}
+			case "FUWAFUWA" -> {
+				if (st.getCpuStones() >= 1 && st.getCpuBattle() != null) {
+					// 簡易: 使う
+					st.setCpuStones(st.getCpuStones() - 1);
+					st.getCpuBattle().setReturnToHandOnKnock(true);
+					st.addLog("CPUふわふわ: 次に手札へ戻る");
+				}
+			}
+			case "NIDONEBI" -> {
+				if (st.getCpuStones() >= 1 && restContainsCardId(st.getCpuRest(), (short) 23)) {
+					st.setCpuStones(st.getCpuStones() - 1);
+					moveOneCardIdToDeckBottom(st.getCpuRest(), st.getCpuDeck(), (short) 23);
+				}
+			}
+			case "RYUNOTAMAGO" -> {
+				if (st.getCpuStones() >= 2) {
+					// 簡易: 使う（ドラゴンがあるなら）
+					for (int i = 0; i < st.getCpuRest().size(); i++) {
+						BattleCard c = st.getCpuRest().get(i);
+						if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "DRAGON")) {
+							st.setCpuStones(st.getCpuStones() - 2);
+							st.getCpuRest().remove(i);
+							st.getCpuHand().add(0, c);
+							break;
+						}
+					}
+				}
+			}
+			case "KORYU" -> {
+				if (st.getCpuStones() >= 1 && st.getCpuBattle() != null) {
+					int elves = countAttributeInRest(st.getCpuRest(), defs, "ELF");
+					if (elves > 0) {
+						st.setCpuStones(st.getCpuStones() - 1);
+						st.getCpuBattle().setTemporaryPowerBonus(st.getCpuBattle().getTemporaryPowerBonus() + elves);
+					}
+				}
+			}
 			default -> {
 			}
 		}
+	}
+
+	private void swapMainWithWolfIfPaid(ZoneFighter z) {
+		if (z == null || z.getMain() == null) return;
+		for (int i = 0; i < z.getCostUnder().size(); i++) {
+			BattleCard c = z.getCostUnder().get(i);
+			if (c != null && c.getCardId() == 21) {
+				BattleCard oldMain = z.getMain();
+				z.getCostUnder().set(i, oldMain);
+				z.setMain(c);
+				return;
+			}
+		}
+	}
+
+	private boolean restContainsCardId(List<BattleCard> rest, short cardId) {
+		for (BattleCard c : rest) {
+			if (c != null && c.getCardId() == cardId) return true;
+		}
+		return false;
+	}
+
+	private void moveOneCardIdToDeckBottom(List<BattleCard> rest, List<BattleCard> deck, short cardId) {
+		for (int i = 0; i < rest.size(); i++) {
+			if (rest.get(i).getCardId() == cardId) {
+				BattleCard c = rest.remove(i);
+				deck.add(c); // bottom
+				return;
+			}
+		}
+	}
+
+	private int countAttributeInRest(List<BattleCard> rest, Map<Short, CardDefinition> defs, String attr) {
+		int n = 0;
+		for (BattleCard c : rest) {
+			if (CardAttributes.hasAttribute(defs.get(c.getCardId()), attr)) n++;
+		}
+		return n;
 	}
 
 	private void discardRightmost(List<BattleCard> hand, List<BattleCard> rest) {
 		if (!hand.isEmpty()) {
 			rest.add(hand.remove(hand.size() - 1));
 		}
+	}
+
+	private List<List<String>> cpuDiscardPlans(List<BattleCard> hand, int k) {
+		List<BattleCard> h = hand != null ? hand : List.of();
+		int n = h.size();
+		if (k <= 0) return List.of(List.of());
+		if (k > n) return List.of();
+
+		List<List<String>> out = new ArrayList<>();
+		// n <= 4 の想定なのでビット全探索で十分
+		int maxMask = 1 << n;
+		for (int mask = 0; mask < maxMask; mask++) {
+			if (Integer.bitCount(mask) != k) continue;
+			List<String> ids = new ArrayList<>(k);
+			for (int i = 0; i < n; i++) {
+				if (((mask >> i) & 1) == 1) {
+					ids.add(h.get(i).getInstanceId());
+				}
+			}
+			out.add(ids);
+		}
+		return out;
+	}
+
+	private boolean canMakeLegalDeploy(CpuBattleState st, boolean forHuman, Map<Short, CardDefinition> defs) {
+		ZoneFighter oppZone = forHuman ? st.getCpuBattle() : st.getHumanBattle();
+		if (oppZone == null || oppZone.getMain() == null) {
+			return true; // 相手バトルゾーンが空なら、そもそも「出せないと負け」の条件にならない
+		}
+
+		int oppEff = effectiveBattlePower(oppZone, !forHuman, st, defs);
+		List<BattleCard> hand = forHuman ? st.getHumanHand() : st.getCpuHand();
+		int stones = forHuman ? st.getHumanStones() : st.getCpuStones();
+
+		// 手札最大4枚想定なので全探索で十分
+		for (int luRest = 0; luRest <= hand.size(); luRest++) {
+			for (int luSt = 0; luSt <= stones; luSt++) {
+				CpuBattleState sim = copyState(st);
+				if (forHuman) {
+					sim.setHumanStones(sim.getHumanStones() - luSt);
+					for (int i = 0; i < luRest; i++) discardRightmost(sim.getHumanHand(), sim.getHumanRest());
+				} else {
+					sim.setCpuStones(sim.getCpuStones() - luSt);
+					for (int i = 0; i < luRest; i++) discardRightmost(sim.getCpuHand(), sim.getCpuRest());
+				}
+
+				List<BattleCard> simHand = forHuman ? sim.getHumanHand() : sim.getCpuHand();
+				int simStones = forHuman ? sim.getHumanStones() : sim.getCpuStones();
+
+				for (BattleCard main : new ArrayList<>(simHand)) {
+					CardDefinition mainDef = defs.get(main.getCardId());
+					if (mainDef == null) continue;
+					int cost = mainDef.getCost();
+
+					for (int payStone = 0; payStone <= Math.min(cost, simStones); payStone++) {
+						int needCards = cost - payStone;
+						if (simHand.size() - 1 < needCards) continue;
+
+						List<BattleCard> others = new ArrayList<>();
+						for (BattleCard c : simHand) {
+							if (!c.getInstanceId().equals(main.getInstanceId())) others.add(c);
+						}
+						if (others.size() < needCards) continue;
+
+						int maxMask = 1 << others.size();
+						for (int mask = 0; mask < maxMask; mask++) {
+							if (Integer.bitCount(mask) != needCards) continue;
+
+							CpuBattleState sim2 = copyState(sim);
+							List<BattleCard> sim2Hand = forHuman ? sim2.getHumanHand() : sim2.getCpuHand();
+
+							BattleCard pickedMain = removeByInstanceId(sim2Hand, main.getInstanceId());
+							if (pickedMain == null) continue;
+
+							if (forHuman) sim2.setHumanStones(sim2.getHumanStones() - payStone);
+							else sim2.setCpuStones(sim2.getCpuStones() - payStone);
+
+							List<BattleCard> paid = new ArrayList<>();
+							for (int i = 0; i < others.size(); i++) {
+								if (((mask >> i) & 1) == 1) {
+									BattleCard p = removeByInstanceId(sim2Hand, others.get(i).getInstanceId());
+									if (p != null) paid.add(p);
+								}
+							}
+							if (paid.size() != needCards) continue;
+
+							int deployBonus = (luRest * 2) + (luSt * 2);
+							ZoneFighter z = new ZoneFighter();
+							z.setMain(pickedMain);
+							z.setCostUnder(paid);
+							z.setTemporaryPowerBonus(deployBonus);
+							if (forHuman) sim2.setHumanBattle(z);
+							else sim2.setCpuBattle(z);
+
+							// 配置能力反映
+							if (forHuman) applyDeployHuman(sim2, mainDef, defs);
+							else applyDeployCpu(sim2, mainDef, defs, new Random(31_337L));
+
+							int eff = effectiveBattlePower(forHuman ? sim2.getHumanBattle() : sim2.getCpuBattle(), forHuman, sim2, defs);
+							if (eff >= oppEff) {
+								return true;
+							}
+						}
+					}
+				}
+			}
+		}
+		return false;
 	}
 }

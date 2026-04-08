@@ -2,6 +2,7 @@ package com.example.stonechronicle.service;
 
 import com.example.stonechronicle.GameConstants;
 import com.example.stonechronicle.battle.CpuBattleEngine;
+import com.example.stonechronicle.battle.BattlePhase;
 import com.example.stonechronicle.battle.CpuBattleState;
 import com.example.stonechronicle.battle.ZoneFighter;
 import com.example.stonechronicle.domain.CardDefinition;
@@ -10,6 +11,7 @@ import com.example.stonechronicle.card.CardAttributeLabels;
 import com.example.stonechronicle.card.CardFaceAbilityFormatter;
 import com.example.stonechronicle.web.dto.AbilityBlockDto;
 import com.example.stonechronicle.web.dto.CardDefDto;
+import com.example.stonechronicle.web.dto.CpuBattleChoiceRequest;
 import com.example.stonechronicle.web.dto.CpuBattleStateDto;
 import com.example.stonechronicle.web.dto.ZoneFighterDto;
 import jakarta.servlet.http.HttpSession;
@@ -39,11 +41,9 @@ public class CpuBattleService {
 		Map<Short, CardDefinition> defs = cardCatalogService.mapById();
 		Random rnd = new Random();
 		CpuBattleState st = engine.newBattle(ids, level, rnd, defs);
+		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
 		session.setAttribute(SESSION_KEY, st);
 		missionService.onCpuBattleStarted(userId);
-		if (!st.isHumansTurn()) {
-			engine.cpuTurn(st, defs, rnd);
-		}
 		return st;
 	}
 
@@ -69,21 +69,15 @@ public class CpuBattleService {
 			return;
 		}
 		engine.humanTurn(st, levelUpRest, levelUpStones, deploy, deployIndex, defs());
-		if (!st.isHumansTurn() && !st.isGameOver()) {
-			engine.cpuTurn(st, defs(), new Random());
-		}
 	}
 
-	public CpuBattleStateDto humanCommit(HttpSession session, int levelUpRest, int levelUpStones,
+	public CpuBattleStateDto humanCommit(HttpSession session, int levelUpRest, List<String> levelUpDiscardInstanceIds, int levelUpStones,
 			String deployInstanceId, int payCostStones, List<String> payCostCardInstanceIds) {
 		CpuBattleState st = current(session);
 		if (st == null) {
 			return null;
 		}
-		engine.humanTurnInteractive(st, levelUpRest, levelUpStones, deployInstanceId, payCostStones, payCostCardInstanceIds, defs());
-		if (!st.isHumansTurn() && !st.isGameOver()) {
-			engine.cpuTurn(st, defs(), new Random());
-		}
+		engine.humanTurnInteractive(st, levelUpRest, levelUpDiscardInstanceIds, levelUpStones, deployInstanceId, payCostStones, payCostCardInstanceIds, defs());
 		return stateDto(session);
 	}
 
@@ -129,6 +123,7 @@ public class CpuBattleService {
 				st.getCpuLevel(),
 				st.isHumanGoesFirst(),
 				st.isHumansTurn(),
+				st.getPhase() != null ? st.getPhase().name() : null,
 				st.getHumanStones(),
 				st.getCpuStones(),
 				st.getHumanDeck().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
@@ -141,12 +136,65 @@ public class CpuBattleService {
 				toZoneDto(st.getCpuBattle()),
 				hbPow,
 				cbPow,
+				st.getHumanNextDeployBonus(),
+				st.getHumanNextElfOnlyBonus(),
 				st.getLastMessage(),
 				st.isGameOver(),
 				st.isHumanWon(),
+				st.getPendingEffect() != null
+						? new com.example.stonechronicle.web.dto.PendingEffectDto(
+								st.getPendingEffect().isOwnerHuman(),
+								st.getPendingEffect().getMainInstanceId(),
+								st.getPendingEffect().getCardId(),
+								st.getPendingEffect().getAbilityDeployCode()
+						)
+						: null,
+				st.getPendingChoice() != null
+						? new com.example.stonechronicle.web.dto.PendingChoiceDto(
+								st.getPendingChoice().getKind() != null ? st.getPendingChoice().getKind().name() : null,
+								st.getPendingChoice().getPrompt(),
+								st.getPendingChoice().isForHuman(),
+								st.getPendingChoice().getAbilityDeployCode(),
+								st.getPendingChoice().getStoneCost(),
+								st.getPendingChoice().getOptionInstanceIds()
+						)
+						: null,
 				st.getEventLog(),
 				defDtos
 		);
+	}
+
+	public CpuBattleStateDto cpuStep(HttpSession session) {
+		CpuBattleState st = current(session);
+		if (st == null) {
+			return null;
+		}
+		engine.cpuTurn(st, defs(), new Random());
+		return stateDto(session);
+	}
+
+	public CpuBattleStateDto resolvePending(HttpSession session) {
+		CpuBattleState st = current(session);
+		if (st == null) {
+			return null;
+		}
+		engine.resolvePendingEffectAndAdvance(st, defs(), new Random());
+		return stateDto(session);
+	}
+
+	public CpuBattleStateDto choose(HttpSession session, CpuBattleChoiceRequest req) {
+		CpuBattleState st = current(session);
+		if (st == null) {
+			return null;
+		}
+		engine.applyHumanChoiceAndAdvance(
+				st,
+				req != null && req.confirm(),
+				req != null && req.pickedInstanceIds() != null ? req.pickedInstanceIds() : List.of(),
+				defs(),
+				new Random()
+		);
+		return stateDto(session);
 	}
 
 	private static ZoneFighterDto toZoneDto(ZoneFighter z) {
