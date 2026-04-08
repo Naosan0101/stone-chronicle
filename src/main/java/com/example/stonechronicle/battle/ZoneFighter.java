@@ -11,6 +11,6 @@ public class ZoneFighter implements Serializable {
 	private List<BattleCard> costUnder = new ArrayList<>();
 	/** この配置でレベルアップ等により一時的に加算した強さ（ターン終了でリセット） */
 	private int temporaryPowerBonus;
-	/** ふわふわゴースト等: 次にレストへ置かれる代わりに手札左へ戻る */
+	/** ふわふわゴースト等: 次にレストへ置かれる代わりに手札へ戻る */
 	private boolean returnToHandOnKnock;
 }

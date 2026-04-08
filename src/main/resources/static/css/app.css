@@ -1200,6 +1200,10 @@ body {
 
 /* レスト：表向きカードを少し重ねて表示 */
 .page--battle .rest-stack .rest-stack__pile {
+	/* deck-stack の pile ルールに依存せず、レスト側だけでも重なり表示が成立するようにする */
+	position: relative;
+	display: inline-block;
+	vertical-align: top;
 	/* デッキと同じ計算式を使う（カード幅・ずれ幅は各セルで上書き） */
 	--rest-card-w: clamp(52px, 6.2vw, 76px);
 	--rest-off: 3px;
@@ -1210,6 +1214,7 @@ body {
 	position: absolute;
 	width: var(--rest-card-w);
 	aspect-ratio: 63 / 88;
+	display: block;
 }
 .page--battle .rest-stack .rest-stack__card .library-card__inner,
 .page--battle .rest-stack .rest-stack__card .battle-layered--rest {

@@ -96,6 +96,7 @@
 	const battleTipPreview = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__preview') : null;
 	const deckTipEl = document.getElementById('battle-deck-tooltip');
 	let lastDefsForTooltip = null;
+	let lastStateForHandPower = null;
 
 	function hideBattleCardTooltip() {
 		if (battleTipPreview) battleTipPreview.textContent = '';
@@ -328,7 +329,12 @@
 		const sectionCards = el('section', 'battle-pay-modal__section');
 		sectionCards.appendChild(el('h3', '', 'カードで支払う（手札から選択）'));
 		const grid = el('div', 'battle-pay-modal__cardgrid');
-		const payCandidates = st.humanHand.filter((c) => c.instanceId !== sel.instanceId);
+		const payCandidates = st.humanHand.filter((c) => {
+			if (c.instanceId === sel.instanceId) return false;
+			// レベルアップで選択したカードは、コスト支払いに使えない（ファイター下に差し込むため）
+			if (ui.levelUpDiscardIds && ui.levelUpDiscardIds.indexOf(c.instanceId) >= 0) return false;
+			return true;
+		});
 		payCandidates.forEach((c) => {
 			const d = st.defs[c.cardId];
 			const btn = el('button', 'battle-pay-modal__card', null);
@@ -467,9 +473,12 @@
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
 
+		const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
 		const overlay = el('div', 'battle-pay-modal');
 		overlay.setAttribute('role', 'dialog');
 		overlay.setAttribute('aria-modal', 'true');
+		overlay.setAttribute('aria-label', title + '一覧');
 
 		const panel = el('div', 'battle-pay-modal__panel');
 		const closeBtn = el('button', 'battle-pay-modal__close', '×');
@@ -480,11 +489,6 @@
 		panel.appendChild(el('p', 'muted', '合計: ' + String(list.length) + '枚'));
 
 		const grid = el('div', 'battle-pay-modal__cardgrid');
-		// Rest modal: center align cards (no CSS file changes)
-		grid.style.display = 'flex';
-		grid.style.flexWrap = 'wrap';
-		grid.style.justifyContent = 'center';
-		grid.style.gap = '10px';
 		list.forEach(function (c) {
 			const d = resolveCardDef(defs, c.cardId);
 			const host = el('div', 'battle-pay-modal__card', null);
@@ -505,22 +509,30 @@
 		document.body.appendChild(overlay);
 		wireBattleCardTooltips(overlay);
 
-		function onClose() {
+		function teardown() {
 			hideBattleCardTooltip();
 			hideBattleDeckTooltip();
 			overlay.remove();
+			document.removeEventListener('keydown', onKey);
+			if (previouslyFocused) {
+				previouslyFocused.focus();
+			}
 		}
 
-		closeBtn.addEventListener('click', onClose);
-		overlay.addEventListener('click', function (e) {
-			if (e.target === overlay) onClose();
-		});
-		document.addEventListener('keydown', function onKey(e) {
+		function onKey(e) {
 			if (e.key === 'Escape') {
-				document.removeEventListener('keydown', onKey);
-				onClose();
+				e.preventDefault();
+				teardown();
 			}
+		}
+
+		closeBtn.addEventListener('click', teardown);
+		overlay.addEventListener('click', function (e) {
+			if (e.target === overlay) teardown();
 		});
+		document.addEventListener('keydown', onKey);
+		// フォーカスをモーダルへ（Enter/Spaceで開いた時にキー操作が効くように）
+		closeBtn.focus();
 	}
 
 	function showLevelUpDiscardConfirmModal(st, onOk) {
@@ -546,8 +558,8 @@
 		closeBtn.type = 'button';
 		panel.appendChild(closeBtn);
 
-		panel.appendChild(el('h2', 'battle-pay-modal__title', '捨てるカードを選択'));
-		panel.appendChild(el('p', 'muted', '手札から ' + String(n) + '枚選んで、レストに置きます。'));
+		panel.appendChild(el('h2', 'battle-pay-modal__title', 'カードを選択'));
+		panel.appendChild(el('p', 'muted', '手札から' + String(n) + '枚選んで、ファイターの下に差し込みます'));
 
 		const grid = el('div', 'battle-pay-modal__cardgrid');
 		hand.forEach(function (c) {
@@ -775,7 +787,9 @@
 				if (Number(nextElfOnlyBonus || 0) > 0 && hasCardAttribute(d.attribute, 'ELF')) {
 					bonus += Number(nextElfOnlyBonus || 0);
 				}
-				const curPow = basePow + bonus;
+				const curPow = lastStateForHandPower
+					? previewHumanBattlePowerForHand(lastStateForHandPower, defs, d, bonus)
+					: (basePow + bonus);
 				applyCurrentPowerDisplay(shell, basePow, curPow);
 				maybeSparkPowerIncrease(shell, c.instanceId, curPow);
 				focusWrap.appendChild(shell);
@@ -828,6 +842,11 @@
 		return d != null && Number(d.id) === PREVIEW_CARD_IDS.RYUOH;
 	}
 
+	function hasRyuohInHumanZone(humanBattle, defs) {
+		const d = zoneMainDef(humanBattle, defs);
+		return d != null && Number(d.id) === PREVIEW_CARD_IDS.RYUOH;
+	}
+
 	/** レベルアップで右端から捨てた後の自分レスト（配置前・サーバ状態ベース） */
 	function simulateHumanRestAfterLevelUp(st, levelUpRest) {
 		const rest = (st.humanRest || []).slice();
@@ -862,6 +881,71 @@
 		return levelUpRest * perRest + levelUpStones * 2;
 	}
 
+	/** 手札表示用: 「いま配置したら」の常時効果込み強さ（UIで選んだレベルアップ指定は含めない） */
+	function previewHumanBattlePowerForHand(st, defs, mainDef, deployBonus) {
+		if (!mainDef) return 0;
+		const id = Number(mainDef.id);
+		const base = Number(mainDef.basePower != null ? mainDef.basePower : 0);
+		let p = base + Number(deployBonus || 0);
+
+		// 竜王が相手ゾーンにいると常時効果は無効化
+		if (hasRyuohInCpuZone(st.cpuBattle, defs)) {
+			return Math.max(0, p);
+		}
+
+		// 以下は CpuBattleEngine.effectiveBattlePower 相当（自分視点）
+		// 薬売り（相手の常時）: 相手が薬売りを配置している間、自分ファイターは相手ストーン数ぶん弱体化
+		// ただし自分が竜王を配置している場合、相手の常時は無効
+		if (!hasRyuohInHumanZone(st.humanBattle) && st.cpuBattle && st.cpuBattle.main) {
+			const oppDef = resolveCardDef(defs, st.cpuBattle.main.cardId);
+			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI) {
+				p -= Number(st.cpuStones || 0);
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.ARCHER) {
+			const opp = st.cpuBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (!hasCardAttribute(od && od.attribute, 'DRAGON')) {
+					p += 1;
+				}
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.DRAGON_RIDER) {
+			if (restContainsTribe(st.humanRest || [], defs, 'DRAGON')) {
+				p += 4;
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.GAIKOTSU) {
+			const opp = st.cpuBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (hasCardAttribute(od && od.attribute, 'ELF')) {
+					p += 2;
+				}
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.SHIREI) {
+			const opp = st.cpuBattle;
+			if (opp && opp.main) {
+				const od = resolveCardDef(defs, opp.main.cardId);
+				if (!hasCardAttribute(od && od.attribute, 'HUMAN')) {
+					p += 1;
+				}
+			}
+		}
+
+		if (id === PREVIEW_CARD_IDS.HONE) {
+			p += countUndeadInRest(st.humanRest || [], defs);
+		}
+
+		return Math.max(0, p);
+	}
+
 	/**
 	 * 選択カードを自分バトルゾーンに置いたときの強さ（CpuBattleEngine.effectiveBattlePower 相当）
 	 */
@@ -878,8 +962,13 @@
 		const stonesAfterLevel = st.humanStones - (ui.levelUpStones | 0);
 		const simRest = simulateHumanRestAfterLevelUp(st, ui.levelUpRest | 0);
 
-		if (id === PREVIEW_CARD_IDS.KUSURI) {
-			p -= stonesAfterLevel;
+		// 薬売り（相手の常時）: 相手が薬売りを配置している間、自分ファイターは相手ストーン数ぶん弱体化
+		// ただし自分が竜王を配置している場合、相手の常時は無効
+		if (!hasRyuohInHumanZone(st.humanBattle) && st.cpuBattle && st.cpuBattle.main) {
+			const oppDef = resolveCardDef(defs, st.cpuBattle.main.cardId);
+			if (oppDef && Number(oppDef.id) === PREVIEW_CARD_IDS.KUSURI) {
+				p -= Number(st.cpuStones || 0);
+			}
 		}
 
 		if (id === PREVIEW_CARD_IDS.ARCHER) {
@@ -1285,7 +1374,7 @@
 		const picked = [];
 
 		if (pc.kind === 'CONFIRM_OPTIONAL_STONE') {
-			panel.appendChild(el('p', 'muted', 'ストーンを' + String(pc.stoneCost || 0) + '使用しますか？'));
+			panel.appendChild(el('p', 'muted', 'ストーンを' + String(pc.stoneCost || 0) + '個使用しますか？'));
 			const actions = el('div', 'battle-pay-modal__actions');
 			const noBtn = el('button', 'btn btn--ghost', 'しない');
 			noBtn.type = 'button';
@@ -1322,6 +1411,37 @@
 					if (next2) render(next2);
 				}).catch(function () { rerenderWithFreshState(); });
 			});
+		} else if (pc.kind === 'CONFIRM_ACCEPT_LOSS') {
+			panel.appendChild(el('p', 'muted', pc.prompt || 'このまま進めますか？'));
+			const actions = el('div', 'battle-pay-modal__actions');
+			const cancelBtn = el('button', 'btn btn--ghost', 'キャンセル');
+			cancelBtn.type = 'button';
+			const okBtn = el('button', 'btn btn--primary', 'はい');
+			okBtn.type = 'button';
+			actions.appendChild(cancelBtn);
+			actions.appendChild(okBtn);
+			panel.appendChild(actions);
+
+			function teardown() { overlay.remove(); }
+			closeBtn.addEventListener('click', teardown);
+			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
+
+			cancelBtn.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardown();
+				sendChoice({ confirm: false, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+				}).catch(function () { rerenderWithFreshState(); });
+			});
+			okBtn.addEventListener('click', function () {
+				const prev = captureAnimRects();
+				teardown();
+				sendChoice({ confirm: true, pickedInstanceIds: [] }).then(function (next) {
+					render(next);
+					requestAnimationFrame(function () { playFLIP(prev); });
+				}).catch(function () { rerenderWithFreshState(); });
+			});
 		} else {
 			const grid = el('div', 'battle-pay-modal__cardgrid');
 			const ids = pc.optionInstanceIds || [];
@@ -1351,6 +1471,7 @@
 
 			function needCount() {
 				if (pc.kind === 'SELECT_SWAP_REST_AND_HAND') return 2;
+				if (pc.kind === 'SELECT_TWO_FROM_HAND_TO_REST') return 2;
 				return 1;
 			}
 			function refresh() { ok.disabled = picked.length !== needCount(); }
@@ -1404,6 +1525,7 @@
 	}
 
 	function render(st) {
+		lastStateForHandPower = st;
 		lastDefsForTooltip = st.defs || null;
 		app.innerHTML = '';
 		hideBattleCardTooltip();

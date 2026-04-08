@@ -19,7 +19,7 @@ public class CpuBattleState implements Serializable {
 	private PendingEffect pendingEffect;
 	/** 人間の選択が必要な場合の保留（任意効果/対象選択など） */
 	private PendingChoice pendingChoice;
-	/** 巫女: 次に配置するファイター強さ+2 */
+	/** 巫女: 次に配置するファイター強さ+1 */
 	private int humanNextDeployBonus;
 	private int cpuNextDeployBonus;
 	/** 妖精: 次に配置するエルフなら +4 */
@@ -27,6 +27,11 @@ public class CpuBattleState implements Serializable {
 	private int cpuNextElfOnlyBonus;
 	/** 科学者: 強さ入れ替え（次のターン終了まで） */
 	private boolean powerSwapActive;
+	/** 古竜: 次の相手ターン終了までの一時強化（自分のレストのエルフ枚数ぶん） */
+	private int humanKoryuBonus;
+	private int cpuKoryuBonus;
+	/** 「能力後も相手以上になれない」場合の確認用スナップショット（キャンセルで巻き戻す） */
+	private CpuBattleState confirmAcceptLossSnapshot;
 
 	private List<BattleCard> humanDeck = new ArrayList<>();
 	private List<BattleCard> humanHand = new ArrayList<>();

@@ -108,9 +108,10 @@
 		else if (r === 'Reg') sparkEl.classList.add('spark--Reg');
 		else sparkEl.classList.add('spark--burst-C');
 
-		const dotCount = r === 'Reg' ? 68 : r === 'Ep' ? 54 : r === 'R' ? 46 : 40;
-		const streaks = r === 'Reg' ? 12 : r === 'Ep' ? 9 : r === 'R' ? 8 : 7;
-		const stars = r === 'Reg' ? 18 : r === 'Ep' ? 14 : r === 'R' ? 11 : 9;
+		// さらに控えめ：粒数をさらに減らし、透明度も上げる（= opacity を下げる）
+		const dotCount = r === 'Reg' ? 16 : r === 'Ep' ? 12 : r === 'R' ? 10 : 8;
+		const streaks = r === 'Reg' ? 3 : r === 'Ep' ? 2 : r === 'R' ? 1 : 1;
+		const stars = r === 'Reg' ? 4 : r === 'Ep' ? 3 : r === 'R' ? 2 : 2;
 
 		for (let i = 0; i < dotCount; i++) {
 			const p = document.createElement('i');
@@ -124,7 +125,7 @@
 			p.style.setProperty('--dy', ((Math.random() * 2 - 1) * (mag + 4)).toFixed(2) + 'px');
 			p.style.setProperty('--s', (0.85 + Math.random() * 1.15).toFixed(2));
 			p.style.setProperty('--d', (Math.random() * 520).toFixed(0) + 'ms');
-			p.style.setProperty('--a', (0.55 + Math.random() * 0.42).toFixed(2));
+			p.style.setProperty('--a', (0.07 + Math.random() * 0.06).toFixed(2));
 			sparkEl.appendChild(p);
 		}
 
@@ -136,7 +137,7 @@
 			p.style.setProperty('--rot', (-52 + Math.random() * 104).toFixed(2) + 'deg');
 			p.style.setProperty('--len', ((r === 'Reg' ? 88 : 72) + Math.random() * 56).toFixed(0) + 'px');
 			p.style.setProperty('--d', (Math.random() * 380).toFixed(0) + 'ms');
-			p.style.setProperty('--a', (0.35 + Math.random() * 0.45).toFixed(2));
+			p.style.setProperty('--a', (0.05 + Math.random() * 0.04).toFixed(2));
 			sparkEl.appendChild(p);
 		}
 
@@ -151,7 +152,7 @@
 			p.style.setProperty('--s', (0.75 + Math.random() * 1.25).toFixed(2));
 			p.style.setProperty('--rot', (Math.random() * 360).toFixed(0) + 'deg');
 			p.style.setProperty('--d', (Math.random() * 450).toFixed(0) + 'ms');
-			p.style.setProperty('--a', (0.5 + Math.random() * 0.48).toFixed(2));
+			p.style.setProperty('--a', (0.06 + Math.random() * 0.05).toFixed(2));
 			sparkEl.appendChild(p);
 		}
 
