@@ -266,7 +266,30 @@
 		return ATTR_LABEL[code] || code;
 	}
 
-	/** デッキへの追加／デッキからの削除はダブルクリック。キーボードは約0.5秒以内に2回 Enter または Space */
+	/** ホバー詳細: 複合種族は「エルフ/アンデッド」形式で一行 */
+	function deckEditTooltipAttribute(c) {
+		if (c.attrLines && c.attrLines.length >= 2) {
+			return c.attrLines.join('/');
+		}
+		if (c.attrLines && c.attrLines.length === 1) {
+			return c.attrLines[0];
+		}
+		const code = c.attribute || '';
+		if (code.indexOf('_') !== -1) {
+			return code.split('_').map(function (seg) {
+				return ATTR_LABEL[seg] || seg;
+			}).join('/');
+		}
+		return attributeLabelJa(c.attribute, c.attributeLabelJa) || '—';
+	}
+
+	function deckEditTooltipAttributeIsCompound(c) {
+		if (c.attrLines && c.attrLines.length >= 2) return true;
+		const code = c.attribute || '';
+		return code.indexOf('_') !== -1;
+	}
+
+	/** デッキへの追加／デッキからの削除はダブルクリック・右クリック。キーボードは約0.5秒以内に2回 Enter または Space */
 	function bindDeckDoubleAction(el, handler) {
 		let lastKeyTs = 0;
 		el.addEventListener('dblclick', function (e) {
@@ -283,6 +306,13 @@
 			} else {
 				lastKeyTs = now;
 			}
+		});
+	}
+
+	function bindDeckContextMenu(el, handler) {
+		el.addEventListener('contextmenu', function (e) {
+			e.preventDefault();
+			handler();
 		});
 	}
 
@@ -409,6 +439,7 @@
 		const face = buildLibraryCardFace(
 			{
 				layerBase: c.layerBase,
+				layerPortrait: c.layerPortrait,
 				layerBar: c.layerBar,
 				layerFrame: c.layerFrame,
 				attribute: c.attribute,
@@ -458,13 +489,6 @@
 		qty.className = 'mini-card__qty';
 		qty.textContent = '×' + c.qty;
 		parent.appendChild(qty);
-	}
-
-	function bindPreview(el, c) {
-		el.addEventListener('contextmenu', function (e) {
-			e.preventDefault();
-			openCardDetailModal(c);
-		});
 	}
 
 	/** シングルクリックで詳細モーダル（ライブラリページと同じ `#library-detail-modal`）。ダブルクリック操作と競合しないよう遅延＋キャンセル */
@@ -538,7 +562,10 @@
 
 	function showTooltip(c, clientX, clientY) {
 		tooltipName.textContent = c.name;
-		tooltipAttr.textContent = attributeLabelJa(c.attribute, c.attributeLabelJa) || '—';
+		const compound = deckEditTooltipAttributeIsCompound(c);
+		tooltipEl.classList.toggle('deck-tooltip--wide-attr', compound);
+		tooltipAttr.textContent = deckEditTooltipAttribute(c);
+		tooltipAttr.classList.toggle('deck-tooltip__attr--oneline', compound);
 		tooltipCost.textContent = String(c.cost);
 		tooltipPower.textContent = String(c.power);
 		fillDeckTooltipAbility(tooltipAbility, c.ability);
@@ -548,6 +575,8 @@
 
 	function hideTooltip() {
 		tooltipEl.hidden = true;
+		tooltipEl.classList.remove('deck-tooltip--wide-attr');
+		tooltipAttr.classList.remove('deck-tooltip__attr--oneline');
 	}
 
 	function bindCardTooltip(el, c) {
@@ -584,34 +613,40 @@
 					'・×' +
 					c.qty +
 					inDeckHint +
-					'）。クリックで詳細、ダブルクリックでデッキへ'
+					'）。クリックで詳細、ダブルクリックまたは右クリックでデッキへ'
 			);
 			appendLibCardFace(el, c);
 			wireSparkOnMiniCardHost(el, c);
 			bindClickOpenCardDetail(el, c);
 			bindCardTooltip(el, c);
-			bindDeckDoubleAction(el, function () {
+			const addToDeck = function () {
 				if (!canAddToDeck(c.id, cap)) return;
 				const copy = document.createElement('div');
 				copy.className = 'mini-card mini-card--deck';
 				copy.dataset.id = String(c.id);
 				copy.setAttribute('role', 'button');
 				copy.setAttribute('tabindex', '0');
-				copy.setAttribute('aria-label', c.name + '。クリックで詳細、ダブルクリックでデッキから戻す');
+				copy.setAttribute(
+					'aria-label',
+					c.name + '。クリックで詳細、ダブルクリックまたは右クリックでデッキから戻す'
+				);
 				appendCardImage(copy, c);
 				wireSparkOnMiniCardHost(copy, c);
-				bindPreview(copy, c);
 				bindClickOpenCardDetail(copy, c);
 				bindCardTooltip(copy, c);
-				bindDeckDoubleAction(copy, function () {
+				const removeFromDeck = function () {
 					copy.remove();
 					refreshLib();
 					update();
-				});
+				};
+				bindDeckDoubleAction(copy, removeFromDeck);
+				bindDeckContextMenu(copy, removeFromDeck);
 				deckZone.appendChild(copy);
 				refreshLib();
 				update();
-			});
+			};
+			bindDeckDoubleAction(el, addToDeck);
+			bindDeckContextMenu(el, addToDeck);
 			libZone.appendChild(el);
 			added++;
 		});
@@ -669,17 +704,21 @@
 			copy.dataset.id = String(id);
 			copy.setAttribute('role', 'button');
 			copy.setAttribute('tabindex', '0');
-			copy.setAttribute('aria-label', c.name + '。クリックで詳細、ダブルクリックでデッキから戻す');
+			copy.setAttribute(
+				'aria-label',
+				c.name + '。クリックで詳細、ダブルクリックまたは右クリックでデッキから戻す'
+			);
 			appendCardImage(copy, c);
 			wireSparkOnMiniCardHost(copy, c);
-			bindPreview(copy, c);
 			bindClickOpenCardDetail(copy, c);
 			bindCardTooltip(copy, c);
-			bindDeckDoubleAction(copy, function () {
+			const removeFromDeck = function () {
 				copy.remove();
 				refreshLib();
 				update();
-			});
+			};
+			bindDeckDoubleAction(copy, removeFromDeck);
+			bindDeckContextMenu(copy, removeFromDeck);
 			deckZone.appendChild(copy);
 		});
 	}

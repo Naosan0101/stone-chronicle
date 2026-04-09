@@ -48,6 +48,7 @@
 					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base"
 					     th:src="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"
 					     alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
+					<img id="lib-modal-layer-portrait" class="card-face__layer-img card-face__layer-img--portrait" alt="" hidden/>
 					<img id="lib-modal-layer-bar" class="card-face__layer-img card-face__layer-img--bar" alt="" hidden/>
 					<img id="lib-modal-layer-frame" class="card-face__layer-img card-face__layer-img--frame"
 					     th:src="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"

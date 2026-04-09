@@ -18,7 +18,9 @@ public class MissionsController {
 	public String missions(Model model) {
 		long uid = CurrentUser.require().getId();
 		missionService.ensureDailyMissions(uid);
+		missionService.ensureWeeklyMissions(uid);
 		model.addAttribute("missions", missionService.todayMissions(uid));
+		model.addAttribute("weeklyMissions", missionService.currentWeekMissions(uid));
 		return "missions";
 	}
 }

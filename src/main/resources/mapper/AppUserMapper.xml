@@ -3,13 +3,17 @@
 <mapper namespace="com.example.stonechronicle.repository.AppUserMapper">
 
 	<select id="findByUsername" resultType="com.example.stonechronicle.domain.AppUser">
-		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt,
+		SELECT id, username, password_hash AS passwordHash, coins,
+		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
+		       last_mission_date AS lastMissionDate, created_at AS createdAt,
 		       last_access_at AS lastAccessAt
 		FROM app_user WHERE username = #{username}
 	</select>
 
 	<select id="findById" resultType="com.example.stonechronicle.domain.AppUser">
-		SELECT id, username, password_hash AS passwordHash, coins, last_mission_date AS lastMissionDate, created_at AS createdAt,
+		SELECT id, username, password_hash AS passwordHash, coins,
+		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
+		       last_mission_date AS lastMissionDate, created_at AS createdAt,
 		       last_access_at AS lastAccessAt
 		FROM app_user WHERE id = #{id}
 	</select>
@@ -21,6 +25,13 @@
 
 	<update id="updateCoins">
 		UPDATE app_user SET coins = #{coins} WHERE id = #{id}
+	</update>
+
+	<update id="grantWelcomeHomeBonusIfPending">
+		UPDATE app_user
+		SET coins = coins + #{amount},
+		    welcome_home_bonus_granted = TRUE
+		WHERE id = #{id} AND welcome_home_bonus_granted = FALSE
 	</update>
 
 	<update id="updateLastMissionDate">

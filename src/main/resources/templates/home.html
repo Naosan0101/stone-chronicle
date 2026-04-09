@@ -18,10 +18,24 @@
 	</div>
 </header>
 
+<div id="welcome-bonus-modal"
+     class="welcome-bonus-modal"
+     th:if="${welcomeHomeBonusShown}"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="welcome-bonus-title">
+	<div class="welcome-bonus-modal__panel">
+		<h2 id="welcome-bonus-title" class="welcome-bonus-modal__heading">新規ユーザープレゼント！</h2>
+		<p class="welcome-bonus-modal__text"
+		   th:text="|${welcomeHomeBonusAmount}ジェムを付与しました。|">30ジェムを付与しました。</p>
+		<button type="button" class="btn btn--primary welcome-bonus-modal__close" id="welcome-bonus-close">閉じる</button>
+	</div>
+</div>
+
 <main class="home-grid">
 	<a class="tile" th:href="@{/pack}">
 		<span class="tile__label">カードパックを購入</span>
-		<span class="tile__hint">0ジェム / 4枚</span>
+		<span class="tile__hint">3〜5ジェム / 4枚</span>
 	</a>
 	<a class="tile" th:href="@{/battle/cpu}">
 		<span class="tile__label">CPUとバトル</span>
@@ -50,5 +64,30 @@
 		</li>
 	</ul>
 </section>
+
+<section class="panel" th:if="${weeklyMissions != null && !weeklyMissions.isEmpty()}">
+	<h2>今週のミッション</h2>
+	<p class="muted home-weekly-mission__hint">月曜更新・各6ジェム</p>
+	<ul class="mission-mini">
+		<li th:each="w : ${weeklyMissions}">
+			<span th:text="${w.title}">—</span>
+			— <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span>
+			<span th:if="${w.rewardGranted}" class="ok">（報酬受取済）</span>
+		</li>
+	</ul>
+</section>
+<script th:if="${welcomeHomeBonusShown}">
+(function () {
+	var modal = document.getElementById('welcome-bonus-modal');
+	var btn = document.getElementById('welcome-bonus-close');
+	if (!modal || !btn) return;
+	document.body.style.overflow = 'hidden';
+	btn.focus();
+	btn.addEventListener('click', function () {
+		modal.hidden = true;
+		document.body.style.overflow = '';
+	});
+})();
+</script>
 </body>
 </html>

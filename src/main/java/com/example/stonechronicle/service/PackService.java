@@ -18,9 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class PackService {
 
 	public enum PackType {
-		STANDARD(0),
-		WINDY_HILL(0),
-		EVIL_THREAT(0);
+		STANDARD(3),
+		WINDY_HILL(4),
+		EVIL_THREAT(5);
 
 		public final int cost;
 

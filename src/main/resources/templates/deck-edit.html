@@ -40,7 +40,7 @@
 
 	<div class="deck-panels deck-panels--stack">
 		<section class="panel deck-panel deck-panel--slots">
-			<h2>デッキ（8枚・クリックで詳細・ダブルクリックで戻す）</h2>
+			<h2>デッキ（8枚・クリックで詳細・ダブルクリックまたは右クリックで戻す）</h2>
 			<div id="deck-zone" class="card-pool card-pool--deck" data-max="8"></div>
 			<p id="deck-count" class="muted">0 / 8</p>
 			<div class="deck-panel__actions-row">
@@ -52,7 +52,7 @@
 		</section>
 		<section class="panel deck-panel deck-panel--library">
 			<div class="deck-lib-toolbar">
-				<h2 class="deck-lib-toolbar__title">ライブラリ（クリックで詳細・ダブルクリックでデッキへ）</h2>
+				<h2 class="deck-lib-toolbar__title">ライブラリ（クリックで詳細・ダブルクリックまたは右クリックでデッキへ）</h2>
 				<div class="deck-lib-toolbar__controls">
 					<label class="deck-lib-field">検索
 						<input type="search" id="lib-search" class="deck-lib-input" autocomplete="off" placeholder="カード名・効果の一部"/>
@@ -157,7 +157,7 @@
 			<div class="card-face card-face--layered" id="library-modal-card-face">
 				<div class="card-face__stack" aria-hidden="true">
 					<img id="lib-modal-layer-base" class="card-face__layer-img card-face__layer-img--base" th:src="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|" alt="" onerror="this.hidden=true; this.removeAttribute('src');"/>
-<!--					<img id="lib-modal-layer-portrait" class="card-face__layer-img card-face__layer-img--portrait" alt="" hidden/>-->
+					<img id="lib-modal-layer-portrait" class="card-face__layer-img card-face__layer-img--portrait" alt="" hidden/>
 					<img id="lib-modal-layer-bar" class="card-face__layer-img card-face__layer-img--bar" alt="" hidden/>
 					<img id="lib-modal-layer-frame" class="card-face__layer-img card-face__layer-img--frame" th:src="|${contextPath != null ? contextPath : ''}${cardDataUrl}|" alt="" fetchpriority="high" onerror="this.hidden=true; this.removeAttribute('src');"/>
 				</div>

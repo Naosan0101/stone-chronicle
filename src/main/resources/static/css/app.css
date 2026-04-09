@@ -122,6 +122,48 @@ body {
 	font-style: italic;
 }
 
+.welcome-bonus-modal[hidden] {
+	display: none !important;
+}
+.welcome-bonus-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 80;
+	background: rgba(0, 0, 0, 0.82);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	overflow-y: auto;
+}
+.welcome-bonus-modal__panel {
+	position: relative;
+	width: 100%;
+	max-width: min(420px, 100%);
+	padding: 1.75rem 1.5rem 1.5rem;
+	border-radius: 16px;
+	border: 1px solid rgba(129, 214, 160, 0.5);
+	background: linear-gradient(165deg, rgba(42, 88, 62, 0.95), rgba(22, 32, 28, 0.98));
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+	text-align: center;
+}
+.welcome-bonus-modal__heading {
+	margin: 0 0 0.85rem;
+	font-size: 1.28rem;
+	line-height: 1.35;
+	color: #d8f5e2;
+	font-weight: 700;
+}
+.welcome-bonus-modal__text {
+	margin: 0 0 1.35rem;
+	font-size: 1.05rem;
+	line-height: 1.5;
+	color: var(--text);
+}
+.welcome-bonus-modal__close {
+	min-width: 8.5rem;
+}
+
 .home-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -244,14 +286,14 @@ body {
 	gap: 0.6rem;
 }
 .page--library .library-grid {
-	/* 「ライブラリを見る」: カードをもう少し大きく見せる */
-	grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
-	gap: 0.9rem;
+	/* 「ライブラリを見る」一覧のカード寸法（1セル＝カード幅の基準） */
+	grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+	gap: 0.65rem;
 }
 @media (max-width: 720px) {
 	.page--library .library-grid {
-		grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+		gap: 0.55rem;
 	}
 }
 /* パック排出結果：枚数が少ないのでセルを広げてカードを大きく見せる */
@@ -584,15 +626,15 @@ body {
 	background: rgba(0,0,0,0.25);
 }
 .page--deck .card-pool--deck {
-	min-height: 208px;
-	gap: 0.6rem;
-	padding: 0.74rem;
+	min-height: 182px;
+	gap: 0.5rem;
+	padding: 0.62rem;
 	justify-content: center;
 }
 .page--deck .library-pool {
-	min-height: 164px;
-	gap: 0.6rem;
-	padding: 0.77rem;
+	min-height: 148px;
+	gap: 0.5rem;
+	padding: 0.65rem;
 }
 .mini-card {
 	padding: 0;
@@ -609,7 +651,7 @@ body {
 .page--deck .mini-card--lib .mini-card__qty {
 	color: #fff;
 	font-weight: 700;
-	font-size: 0.98rem;
+	font-size: 0.88rem;
 	letter-spacing: 0.02em;
 	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
@@ -619,22 +661,22 @@ body {
 	max-width: 72px;
 }
 .page--deck .mini-card--deck .card-face--mini-deck {
-	width: clamp(130px, 15vw, 164px);
-	max-width: clamp(130px, 15vw, 164px);
+	width: clamp(112px, 13vw, 142px);
+	max-width: clamp(112px, 13vw, 142px);
 	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.39);
 }
 .page--deck .mini-card--lib .card-face--mini-deck {
-	width: clamp(142px, 16.5vw, 202px);
-	max-width: clamp(142px, 16.5vw, 202px);
+	width: clamp(122px, 14.2vw, 176px);
+	max-width: clamp(122px, 14.2vw, 176px);
 	box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38);
 }
 .page--deck .mini-card--deck img {
-	width: clamp(130px, 15vw, 164px);
+	width: clamp(112px, 13vw, 142px);
 	border-radius: 11px;
 	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.39);
 }
 .page--deck .mini-card--lib img {
-	width: clamp(142px, 16.5vw, 202px);
+	width: clamp(122px, 14.2vw, 176px);
 	border-radius: 9px;
 	box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38);
 }
@@ -774,6 +816,15 @@ body {
 	font-size: 0.99rem;
 	line-height: 1.5;
 }
+/* 複合種族を「エルフ/アンデッド」一行で収めるためホバー枠を横に広げる（上記 max-width より後で上書き） */
+.library-page-tooltip.deck-tooltip--wide-attr,
+.deck-edit-page-tooltip.deck-tooltip--wide-attr {
+	max-width: min(520px, 96vw);
+}
+.library-page-tooltip .deck-tooltip__stats dd.deck-tooltip__attr--oneline,
+.deck-edit-page-tooltip .deck-tooltip__stats dd.deck-tooltip__attr--oneline {
+	white-space: nowrap;
+}
 @media (max-width: 520px) {
 	.library-page-tooltip .deck-tooltip__inner,
 	.deck-edit-page-tooltip .deck-tooltip__inner {
@@ -876,6 +927,18 @@ body {
 	width: clamp(140px, 14vw, 190px);
 	display: block;
 	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
+.page--battle .battle-card-tooltip__power-label {
+	margin-top: 0.35rem;
+}
+.page--battle .battle-card-tooltip__power-modifiers {
+	margin: 0;
+	padding-left: 1.1rem;
+	font-size: 0.88rem;
+	line-height: 1.45;
+	color: var(--muted);
+	list-style: disc;
 }
 
 /* バトル：デッキ枚数ポップアップ（例: 5枚） */
@@ -1950,6 +2013,34 @@ body {
 	white-space: pre-wrap;
 	word-break: break-word;
 }
+.battle-zone-detail-modal__power-sources {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	margin: 0 0 0.25rem;
+}
+.battle-zone-detail-modal__power-line {
+	margin: 0;
+	font-size: 0.95rem;
+	line-height: 1.45;
+}
+.battle-zone-detail-modal__source-link {
+	display: inline;
+	padding: 0;
+	margin: 0;
+	border: none;
+	background: none;
+	color: var(--accent);
+	font: inherit;
+	font-weight: 700;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+	cursor: pointer;
+	text-align: left;
+}
+.battle-zone-detail-modal__source-link:hover {
+	color: #fff;
+}
 
 /* =========================
    Battle result (victory/defeat)
@@ -2089,7 +2180,42 @@ body {
 .log li { margin: 0.15rem 0; }
 
 .mission-mini { font-size: 0.9rem; color: var(--muted); }
-.mission-list { list-style: none; padding: 0; margin: 0; }
+.home-weekly-mission__hint {
+	margin: 0 0 0.5rem;
+	font-size: 0.88rem;
+}
+.mission-section__heading {
+	margin: 0 0 0.35rem;
+	font-size: 1.15rem;
+}
+.mission-section__hint {
+	margin: 0 0 0.75rem;
+	font-size: 0.9rem;
+}
+.mission-section + .mission-section {
+	margin-top: 1rem;
+}
+.mission-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+}
+.mission-list__item {
+	margin: 0;
+}
+.mission-list__card {
+	padding: 0.85rem 1rem;
+}
+.mission-list__card h3 {
+	margin: 0 0 0.4rem;
+	font-size: 1rem;
+}
+.mission-list__card p {
+	margin: 0.25rem 0;
+}
 
 /* =========================
    Card face (layered)
@@ -2388,8 +2514,8 @@ body {
 	display: block;
 }
 .page--deck .mini-card .card-face--mini-deck {
-	--cf-ability-body: 5.2cqi;
-	--cf-ability-head: 5.8cqi;
+	--cf-ability-body: 4.75cqi;
+	--cf-ability-head: 5.25cqi;
 }
 
 /* ------------------------------

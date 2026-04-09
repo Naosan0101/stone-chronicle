@@ -82,6 +82,30 @@ public final class GameConstants {
 		return encCardFile(imageFile);
 	}
 
+	/**
+	 * カード面のイラスト層（①基盤と種族バーの間）。種族が単一の次のいずれかのときのみ:
+	 * {@code HUMAN} / {@code ELF} / {@code UNDEAD} / {@code ELF_UNDEAD} / {@code DRAGON}。
+	 * 素材ファイル名はカード名と一致する {@code 名前.PNG}。
+	 */
+	public static String namedTribePortraitLayerPath(String attribute, String cardName) {
+		if (attribute == null || cardName == null) {
+			return "";
+		}
+		String attr = attribute.trim().toUpperCase(Locale.ROOT);
+		if (!attr.equals("HUMAN")
+				&& !attr.equals("ELF")
+				&& !attr.equals("UNDEAD")
+				&& !attr.equals("ELF_UNDEAD")
+				&& !attr.equals("DRAGON")) {
+			return "";
+		}
+		String n = cardName.trim();
+		if (n.isEmpty()) {
+			return "";
+		}
+		return encCardFile(n + ".PNG");
+	}
+
 	/** ASCII 名に統一（Git が NFD の「カードうら.PNG」だと URL 解決が環境で不一致になりやすい）。 */
 	public static final String CARD_BACK_FILE = "card-back.PNG";
 
@@ -102,10 +126,17 @@ public final class GameConstants {
 		return encCardFileNfc(filename);
 	}
 
-	public static final int STARTING_COINS = 6;
+	/** 新規登録直後の所持ジェム（初回ホームでウェルカムボーナス） */
+	public static final int STARTING_COINS = 0;
+
+	/** 初めてホームを開いたときに一度だけ付与 */
+	public static final int WELCOME_HOME_BONUS_GEMS = 30;
 	public static final int PACK_COST = 3;
 	public static final int PACK_CARD_COUNT = 4;
 	public static final int MISSION_REWARD_COINS = 3;
+
+	/** ウィークリーミッション1件あたり（デイリーの約2倍） */
+	public static final int MISSION_WEEKLY_REWARD_COINS = 6;
 
 	private GameConstants() {
 	}

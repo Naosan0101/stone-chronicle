@@ -5,7 +5,8 @@ import java.util.List;
 public record ZoneFighterDto(
 		BattleCardDto main,
 		List<BattleCardDto> costUnder,
-		int temporaryPowerBonus
+		int temporaryPowerBonus,
+		List<BattlePowerModifierDto> powerModifiers
 ) {
 }
 

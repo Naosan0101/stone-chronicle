@@ -74,7 +74,11 @@
 	}
 
 	function hideHoverTooltip() {
-		if (tooltipEl) tooltipEl.hidden = true;
+		if (tooltipEl) {
+			tooltipEl.hidden = true;
+			tooltipEl.classList.remove('deck-tooltip--wide-attr');
+		}
+		if (tooltipAttr) tooltipAttr.classList.remove('deck-tooltip__attr--oneline');
 	}
 
 	function fillDeckTooltipAbility(el, raw) {
@@ -122,12 +126,40 @@
 		tooltipEl.style.top = y + 'px';
 	}
 
+	function tooltipAttributeDisplay(d) {
+		const pipe = d.attrPipe || '';
+		if (pipe) {
+			const parts = pipe.split('|').filter(Boolean);
+			if (parts.length > 1) return parts.join('/');
+			if (parts.length === 1) return parts[0];
+		}
+		const attr = d.attribute || '';
+		if (attr.indexOf('_') !== -1) {
+			return attr.split('_').map(function (seg) {
+				return ATTR_JA[seg] || seg;
+			}).join('/');
+		}
+		return d.attributeJa || ATTR_JA[attr] || attr || '—';
+	}
+
+	function tooltipAttributeIsCompound(d) {
+		const pipe = d.attrPipe || '';
+		if (pipe.split('|').filter(Boolean).length > 1) return true;
+		const attr = d.attribute || '';
+		return attr.indexOf('_') !== -1;
+	}
+
 	function showHoverTooltip(btn, clientX, clientY) {
 		if (!tooltipEl || !tooltipName) return;
 		const d = btn.dataset;
 		const owned = d.owned === 'true';
 		tooltipName.textContent = owned ? (d.name || '') : '？？？？';
-		if (tooltipAttr) tooltipAttr.textContent = d.attributeJa || ATTR_JA[d.attribute] || d.attribute || '—';
+		const compound = tooltipAttributeIsCompound(d);
+		if (tooltipEl.classList) tooltipEl.classList.toggle('deck-tooltip--wide-attr', compound);
+		if (tooltipAttr) {
+			tooltipAttr.textContent = tooltipAttributeDisplay(d);
+			tooltipAttr.classList.toggle('deck-tooltip__attr--oneline', compound);
+		}
 		if (tooltipCost) tooltipCost.textContent = owned && d.cost != null && d.cost !== '' ? String(d.cost) : '—';
 		if (tooltipPower) tooltipPower.textContent = owned && d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
 		if (tooltipRarity) tooltipRarity.textContent = owned ? (d.rarityLabel || d.rarity || 'C') : '—';

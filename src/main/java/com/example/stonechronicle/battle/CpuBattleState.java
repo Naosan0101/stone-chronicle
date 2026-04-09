@@ -21,10 +21,10 @@ public class CpuBattleState implements Serializable {
 	private PendingEffect pendingEffect;
 	/** 人間の選択が必要な場合の保留（任意効果/対象選択など） */
 	private PendingChoice pendingChoice;
-	/** 巫女: 次に配置するファイター強さ+1 */
+	/** エルフの巫女: 次に配置するファイター強さ+1 */
 	private int humanNextDeployBonus;
 	private int cpuNextDeployBonus;
-	/** 妖精: 次に配置するエルフなら +3 */
+	/** ウッドエルフ: 次に配置するエルフなら +3 */
 	private int humanNextElfOnlyBonus;
 	private int cpuNextElfOnlyBonus;
 	/** 隊長: 次に配置するファイターのコストぶん強化（重ねがけ可） */

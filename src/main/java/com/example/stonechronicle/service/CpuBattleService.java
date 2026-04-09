@@ -13,6 +13,7 @@ import com.example.stonechronicle.web.dto.AbilityBlockDto;
 import com.example.stonechronicle.web.dto.CardDefDto;
 import com.example.stonechronicle.web.dto.CpuBattleChoiceRequest;
 import com.example.stonechronicle.web.dto.CpuBattleStateDto;
+import com.example.stonechronicle.web.dto.BattlePowerModifierDto;
 import com.example.stonechronicle.web.dto.ZoneFighterDto;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
@@ -115,7 +116,7 @@ public class CpuBattleService {
 								GameConstants.CARD_LAYER_BASE,
 								GameConstants.cardLayerBarPath(d.getAttribute()),
 								GameConstants.CARD_LAYER_DATA,
-								GameConstants.cardPortraitPath(d.getImageFile()),
+								GameConstants.namedTribePortraitLayerPath(d.getAttribute(), d.getName()),
 								CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
 										.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
 										.toList()
@@ -135,11 +136,11 @@ public class CpuBattleService {
 				st.getHumanDeck().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
 				st.getHumanHand().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
 				st.getHumanRest().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
-				toZoneDto(st.getHumanBattle()),
+				toZoneDto(st.getHumanBattle(), engine.explainDisplayedPowerContributors(true, st, defs)),
 				st.getCpuDeck().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
 				st.getCpuHand().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
 				st.getCpuRest().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
-				toZoneDto(st.getCpuBattle()),
+				toZoneDto(st.getCpuBattle(), engine.explainDisplayedPowerContributors(false, st, defs)),
 				hbPow,
 				cbPow,
 				st.getHumanNextDeployBonus(),
@@ -206,12 +207,13 @@ public class CpuBattleService {
 		return stateDto(session);
 	}
 
-	private static ZoneFighterDto toZoneDto(ZoneFighter z) {
+	private static ZoneFighterDto toZoneDto(ZoneFighter z, List<BattlePowerModifierDto> powerModifiers) {
 		if (z == null) {
 			return null;
 		}
 		var main = z.getMain() != null ? new BattleCardDto(z.getMain().getInstanceId(), z.getMain().getCardId()) : null;
 		var under = z.getCostUnder().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList();
-		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus());
+		List<BattlePowerModifierDto> mods = powerModifiers != null ? powerModifiers : List.of();
+		return new ZoneFighterDto(main, under, z.getTemporaryPowerBonus(), mods);
 	}
 }

@@ -74,9 +74,8 @@ public class LibraryService {
 		String rarity = c.getRarity();
 		v.setRarity(rarity != null && !rarity.isBlank() ? rarity : "C");
 		v.setRarityLabel(v.getRarity());
-		String portrait = GameConstants.cardPortraitPath(c.getImageFile());
-		v.setImagePath(portrait);
-		v.setLayerPortraitPath(portrait);
+		v.setImagePath(GameConstants.cardPortraitPath(c.getImageFile()));
+		v.setLayerPortraitPath(GameConstants.namedTribePortraitLayerPath(c.getAttribute(), c.getName()));
 		v.setCost(c.getCost() != null ? c.getCost() : 0);
 		v.setBasePower(c.getBasePower() != null ? c.getBasePower() : 0);
 		String canon = CanonicalLibraryCardText.lineForId(c.getId());

@@ -16,6 +16,11 @@ public interface AppUserMapper {
 
 	int updateCoins(@Param("id") long id, @Param("coins") int coins);
 
+	/**
+	 * {@code welcome_home_bonus_granted = false} のときだけ {@code amount} を加算し true にする。競合時は 0 行。
+	 */
+	int grantWelcomeHomeBonusIfPending(@Param("id") long id, @Param("amount") int amount);
+
 	int updateLastMissionDate(@Param("id") long id, @Param("lastMissionDate") LocalDate lastMissionDate);
 
 	int updateLastAccessAt(@Param("id") long id, @Param("at") LocalDateTime at);

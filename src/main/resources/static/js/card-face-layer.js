@@ -123,6 +123,7 @@
 		const dataFb = options.dataFallback || '';
 
 		const layerBase = card.layerBasePath || card.layerBase || '';
+		const layerPortrait = card.layerPortraitPath || card.layerPortrait || '';
 		const layerBar = card.layerBarPath || card.layerBar || '';
 		const layerFrame = card.layerFramePath || card.layerFrame || '';
 
@@ -160,6 +161,9 @@
 		}
 
 		pushLayer('base', layerBase, plateFb);
+		if (layerPortrait) {
+			pushLayer('portrait', layerPortrait, '');
+		}
 		if (layerBar) {
 			pushLayer('bar', layerBar, '');
 		}
@@ -232,9 +236,11 @@
 		const plate = plateFallback || '';
 		const data = dataFallback || '';
 		const base = faceRoot.querySelector('img.card-face__layer-img--base');
+		const portrait = faceRoot.querySelector('img.card-face__layer-img--portrait');
 		const bar = faceRoot.querySelector('img.card-face__layer-img--bar');
 		const frame = faceRoot.querySelector('img.card-face__layer-img--frame');
 		applyOnceImgFallback(base, plate);
+		applyOnceImgFallback(portrait, '');
 		applyOnceImgFallback(bar, '');
 		applyOnceImgFallback(frame, data);
 	}

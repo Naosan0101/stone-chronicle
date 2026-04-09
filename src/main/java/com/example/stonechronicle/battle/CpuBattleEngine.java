@@ -2,6 +2,7 @@ package com.example.stonechronicle.battle;
 
 import com.example.stonechronicle.card.CardAttributes;
 import com.example.stonechronicle.domain.CardDefinition;
+import com.example.stonechronicle.web.dto.BattlePowerModifierDto;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,6 +25,7 @@ public class CpuBattleEngine {
 	private static final short GAIKOTSU_ID = 18;
 	private static final short SHIREI_ID = 20;
 	private static final short HONE_ID = 24;
+	private static final short KORYU_ID = 29;
 
 	public CpuBattleState newBattle(List<Short> humanDeckCardIds, int cpuLevel, Random rnd,
 			Map<Short, CardDefinition> defs) {
@@ -422,10 +424,10 @@ public class CpuBattleEngine {
 						st.addLog("科学者: 強さを入れ替えた");
 					} else if ("MIKO".equals(pc.getAbilityDeployCode())) {
 						st.setHumanNextDeployBonus(st.getHumanNextDeployBonus() + 1);
-						st.addLog("巫女: 次の配置+1");
+						st.addLog("エルフの巫女: 次の配置+1");
 					} else if ("YOSEI".equals(pc.getAbilityDeployCode())) {
 						st.setHumanNextElfOnlyBonus(st.getHumanNextElfOnlyBonus() + 3);
-						st.addLog("妖精: 次のエルフ配置+3");
+						st.addLog("ウッドエルフ: 次のエルフ配置+3");
 					} else if ("SHOKIN".equals(pc.getAbilityDeployCode())) {
 						st.setHumanNextDeployCostBonusTimes(st.getHumanNextDeployCostBonusTimes() + 1);
 						st.addLog("隊長: 次の配置はコストぶん強化");
@@ -629,10 +631,10 @@ public class CpuBattleEngine {
 						st.addLog("科学者: 強さを入れ替えた");
 					} else if ("MIKO".equals(pc.getAbilityDeployCode())) {
 						st.setCpuNextDeployBonus(st.getCpuNextDeployBonus() + 1);
-						st.addLog("巫女: 次の配置+1");
+						st.addLog("エルフの巫女: 次の配置+1");
 					} else if ("YOSEI".equals(pc.getAbilityDeployCode())) {
 						st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + 3);
-						st.addLog("妖精: 次のエルフ配置+3");
+						st.addLog("ウッドエルフ: 次のエルフ配置+3");
 					} else if ("SHOKIN".equals(pc.getAbilityDeployCode())) {
 						st.setCpuNextDeployCostBonusTimes(st.getCpuNextDeployCostBonusTimes() + 1);
 						st.addLog("隊長: 次の配置はコストぶん強化");
@@ -1836,6 +1838,118 @@ public class CpuBattleEngine {
 		return Math.max(0, p);
 	}
 
+	/**
+	 * 画面左（自分）／右（相手）列に表示している強さの内訳に対応する要因。
+	 * {@link #effectiveBattlePower} のパワースワップと同じ視点。
+	 */
+	public List<BattlePowerModifierDto> explainDisplayedPowerContributors(boolean forHumanSide, CpuBattleState st,
+			Map<Short, CardDefinition> defs) {
+		if (st == null) {
+			return List.of();
+		}
+		if (st.isPowerSwapActive()) {
+			if (forHumanSide) {
+				return explainPowerContributorsNoSwap(st.getCpuBattle(), false, st, defs);
+			}
+			return explainPowerContributorsNoSwap(st.getHumanBattle(), true, st, defs);
+		}
+		if (forHumanSide) {
+			return explainPowerContributorsNoSwap(st.getHumanBattle(), true, st, defs);
+		}
+		return explainPowerContributorsNoSwap(st.getCpuBattle(), false, st, defs);
+	}
+
+	/** {@link #effectiveBattlePowerNoSwap} と同じ条件で、基礎強さからの増減要因だけを列挙する */
+	private List<BattlePowerModifierDto> explainPowerContributorsNoSwap(ZoneFighter zf, boolean ownerIsHuman,
+			CpuBattleState st, Map<Short, CardDefinition> defs) {
+		List<BattlePowerModifierDto> out = new ArrayList<>();
+		if (zf == null || zf.getMain() == null || defs == null) {
+			return out;
+		}
+		short id = zf.getMain().getCardId();
+		CardDefinition d = defs.get(id);
+		if (d == null) {
+			return out;
+		}
+
+		boolean suppress = ownerIsHuman
+				? hasRyuoh(st.getCpuBattle())
+				: hasRyuoh(st.getHumanBattle());
+		if (suppress) {
+			if (zf.getTemporaryPowerBonus() != 0) {
+				out.add(new BattlePowerModifierDto(null, "レベルアップ（配置）"));
+			}
+			return out;
+		}
+
+		boolean suppressOpponentEffects = ownerIsHuman
+				? hasRyuoh(st.getHumanBattle())
+				: hasRyuoh(st.getCpuBattle());
+
+		if (zf.getTemporaryPowerBonus() != 0) {
+			out.add(new BattlePowerModifierDto(null, "レベルアップ（配置）"));
+		}
+
+		int koryu = ownerIsHuman ? st.getHumanKoryuBonus() : st.getCpuKoryuBonus();
+		if (koryu > 0) {
+			out.add(new BattlePowerModifierDto(KORYU_ID, null));
+		}
+
+		if (!suppressOpponentEffects) {
+			ZoneFighter oppZone = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+			if (oppZone != null && oppZone.getMain() != null && oppZone.getMain().getCardId() == KUSURI_ID) {
+				int debuff = ownerIsHuman ? st.getCpuStones() : st.getHumanStones();
+				if (debuff > 0) {
+					out.add(new BattlePowerModifierDto(KUSURI_ID, "（相手の薬売り・ストーン" + debuff + "）"));
+				}
+			}
+		}
+
+		if (id == ARCHER_ID) {
+			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+			if (opp != null && opp.getMain() != null) {
+				CardDefinition od = defs.get(opp.getMain().getCardId());
+				if (!CardAttributes.hasAttribute(od, "DRAGON")) {
+					out.add(new BattlePowerModifierDto(ARCHER_ID, null));
+				}
+			}
+		}
+
+		if (id == DRAGON_RIDER_ID) {
+			List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+			if (restContainsAttribute(rest, defs, "DRAGON")) {
+				out.add(new BattlePowerModifierDto(DRAGON_RIDER_ID, "（レストのドラゴン）"));
+			}
+		}
+
+		if (id == GAIKOTSU_ID) {
+			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+			if (opp != null && opp.getMain() != null
+					&& CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "ELF")) {
+				out.add(new BattlePowerModifierDto(opp.getMain().getCardId(), null));
+			}
+		}
+
+		if (id == SHIREI_ID) {
+			ZoneFighter opp = ownerIsHuman ? st.getCpuBattle() : st.getHumanBattle();
+			if (opp != null && opp.getMain() != null
+					&& !CardAttributes.hasAttribute(defs.get(opp.getMain().getCardId()), "HUMAN")) {
+				out.add(new BattlePowerModifierDto(opp.getMain().getCardId(), null));
+			}
+		}
+
+		if (id == HONE_ID) {
+			List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
+			for (BattleCard c : rest) {
+				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "UNDEAD")) {
+					out.add(new BattlePowerModifierDto(c.getCardId(), null));
+				}
+			}
+		}
+
+		return out;
+	}
+
 	private boolean hasRyuoh(ZoneFighter z) {
 		return z != null && z.getMain() != null && z.getMain().getCardId() == RYUOH_ID;
 	}
@@ -1898,15 +2012,15 @@ public class CpuBattleEngine {
 				}
 			}
 			case "MIKO" -> {
-				// 巫女: ストーン消費なしで、次回配置+1（任意選択なし）
+				// エルフの巫女: ストーン消費なしで、次回配置+1（任意選択なし）
 				st.setHumanNextDeployBonus(st.getHumanNextDeployBonus() + 1);
-				st.addLog("巫女: 次の配置+1");
+				st.addLog("エルフの巫女: 次の配置+1");
 			}
 			case "YOSEI" -> {
 				if (st.getHumanStones() >= 1) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"妖精",
+							"ウッドエルフ",
 							true,
 							"YOSEI",
 							1,
@@ -2100,13 +2214,13 @@ public class CpuBattleEngine {
 			}
 			case "MIKO" -> {
 				st.setCpuNextDeployBonus(st.getCpuNextDeployBonus() + 1);
-				st.addLog("巫女: 次の配置+1");
+				st.addLog("エルフの巫女: 次の配置+1");
 			}
 			case "YOSEI" -> {
 				if (st.getCpuStones() >= 1) {
 					st.setPendingChoice(new PendingChoice(
 							ChoiceKind.CONFIRM_OPTIONAL_STONE,
-							"妖精",
+							"ウッドエルフ",
 							false,
 							"YOSEI",
 							1,
@@ -2344,11 +2458,11 @@ public class CpuBattleEngine {
 				}
 			}
 			case "MIKO" -> {
-				// 巫女: ストーン消費なしで、次回配置+1
+				// エルフの巫女: ストーン消費なしで、次回配置+1
 				st.setCpuNextDeployBonus(st.getCpuNextDeployBonus() + 1);
 			}
 			case "YOSEI" -> {
-				// CPU: ストーンがあれば使う（次のエルフ配置+3）
+				// CPU: ストーンがあれば使う（ウッドエルフ：次のエルフ配置+3）
 				if (st.getCpuStones() >= 1) {
 					st.setCpuStones(st.getCpuStones() - 1);
 					st.setCpuNextElfOnlyBonus(st.getCpuNextElfOnlyBonus() + 3);

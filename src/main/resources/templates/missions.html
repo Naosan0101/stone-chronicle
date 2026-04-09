@@ -12,13 +12,30 @@
 	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
 </header>
 
-<ul class="mission-list">
-	<li class="panel" th:each="m : ${missions}">
-		<h2 th:text="${m.title}">タイトル</h2>
-		<p>進捗: <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span></p>
-		<p class="muted">達成で3ジェム（自動付与）</p>
-		<p class="ok" th:if="${m.rewardGranted}">報酬受取済</p>
-	</li>
-</ul>
+<section class="panel mission-section" th:if="${missions != null && !missions.isEmpty()}">
+	<h2 class="mission-section__heading">デイリーミッション</h2>
+	<p class="muted mission-section__hint">毎日0時（日本時間）に更新</p>
+	<ul class="mission-list">
+		<li class="mission-list__item panel mission-list__card" th:each="m : ${missions}">
+			<h3 th:text="${m.title}">タイトル</h3>
+			<p>進捗: <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span></p>
+			<p class="muted">達成で3ジェム（自動付与）</p>
+			<p class="ok" th:if="${m.rewardGranted}">報酬受取済</p>
+		</li>
+	</ul>
+</section>
+
+<section class="panel mission-section" th:if="${weeklyMissions != null && !weeklyMissions.isEmpty()}">
+	<h2 class="mission-section__heading">ウィークリーミッション</h2>
+	<p class="muted mission-section__hint">毎週月曜0時（日本時間）に更新</p>
+	<ul class="mission-list">
+		<li class="mission-list__item panel mission-list__card" th:each="w : ${weeklyMissions}">
+			<h3 th:text="${w.title}">タイトル</h3>
+			<p>進捗: <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span></p>
+			<p class="muted">達成で6ジェム（自動付与）</p>
+			<p class="ok" th:if="${w.rewardGranted}">報酬受取済</p>
+		</li>
+	</ul>
+</section>
 </body>
 </html>

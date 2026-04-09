@@ -2,8 +2,8 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <!--
-  画像のみ: ①カード基盤 → ②種族バー → ③カード基礎データ（最前面）→ HTML テキスト
-  イラスト層は後日。素材: static/images/cards/*.PNG
+  画像のみ: ①カード基盤 → ②イラスト（人間・エルフ・アンデッド・エルフアンデッド・ドラゴン）→ ③種族バー → ④カード基礎データ → HTML テキスト
+  イラスト: static/images/cards/「名前」.PNG
 -->
 <div th:fragment="layers(c, cp)" class="card-face card-face--layered"
      th:classappend="|card-face--attr-${c.attribute} card-face--rarity-${c.rarity}|">
@@ -13,13 +13,11 @@
 		     th:src="|${cp != null ? cp : ''}${c.layerBasePath}|"
 		     alt=""
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
-		<!--/* イラスト層は素材整備後に有効化（未実装の間は壊れアイコン防止のため出力しない。library.html モーダルと同様）
 		<img class="card-face__layer-img card-face__layer-img--portrait"
 		     th:if="${c.layerPortraitPath != null && !c.layerPortraitPath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.layerPortraitPath}|"
 		     alt=""
 		     onerror="this.hidden=true; this.removeAttribute('src');"/>
-		*/-->
 		<img class="card-face__layer-img card-face__layer-img--bar"
 		     th:if="${c.barImagePath != null && !c.barImagePath.isBlank()}"
 		     th:src="|${cp != null ? cp : ''}${c.barImagePath}|"

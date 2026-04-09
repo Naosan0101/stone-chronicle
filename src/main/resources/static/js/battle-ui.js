@@ -243,12 +243,19 @@
 	const battleTipAttr = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__attr') : null;
 	const battleTipAbility = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__ability') : null;
 	const battleTipPreview = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__preview') : null;
+	const battleTipPowerLabel = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__power-label') : null;
+	const battleTipPowerMods = battleTipEl ? battleTipEl.querySelector('.battle-card-tooltip__power-modifiers') : null;
 	const deckTipEl = document.getElementById('battle-deck-tooltip');
 	let lastDefsForTooltip = null;
 	let lastStateForHandPower = null;
 
 	function hideBattleCardTooltip() {
 		if (battleTipPreview) battleTipPreview.textContent = '';
+		if (battleTipPowerMods) {
+			battleTipPowerMods.textContent = '';
+			battleTipPowerMods.hidden = true;
+		}
+		if (battleTipPowerLabel) battleTipPowerLabel.hidden = true;
 		if (battleTipEl) battleTipEl.hidden = true;
 	}
 
@@ -320,6 +327,56 @@
 		return fallback;
 	}
 
+	function parseBattlePowerContributorsFromHost(host) {
+		if (!host || !host.dataset || !host.dataset.battlePowerContributors) return [];
+		try {
+			const v = JSON.parse(host.dataset.battlePowerContributors);
+			return Array.isArray(v) ? v : [];
+		} catch (e) {
+			return [];
+		}
+	}
+
+	function formatBattlePowerContributorText(defs, mod) {
+		if (!mod || typeof mod !== 'object') return '—';
+		const id = mod.sourceCardId;
+		const label = mod.label != null ? String(mod.label) : '';
+		if (id != null && defs) {
+			const d = resolveCardDef(defs, id);
+			const name = d && d.name ? String(d.name) : 'カード#' + String(id);
+			return name + (label ? ' ' + label : '');
+		}
+		return label || '—';
+	}
+
+	function fillBattleTooltipPowerSection(host) {
+		if (!battleTipPowerMods || !battleTipPowerLabel) return;
+		battleTipPowerMods.textContent = '';
+		const mods = parseBattlePowerContributorsFromHost(host);
+		if (!mods.length) {
+			battleTipPowerMods.hidden = true;
+			battleTipPowerLabel.hidden = true;
+			return;
+		}
+		battleTipPowerLabel.hidden = false;
+		battleTipPowerMods.hidden = false;
+		const defs = lastDefsForTooltip;
+		mods.forEach(function (mod) {
+			const li = document.createElement('li');
+			li.textContent = formatBattlePowerContributorText(defs, mod);
+			battleTipPowerMods.appendChild(li);
+		});
+	}
+
+	function setBattleZonePowerContributorsDataset(el, mods) {
+		if (!el || !el.dataset) return;
+		if (mods && mods.length) {
+			el.dataset.battlePowerContributors = JSON.stringify(mods);
+		} else {
+			delete el.dataset.battlePowerContributors;
+		}
+	}
+
 	function fillBattleTooltipAbility(el, raw) {
 		if (!el) return;
 		el.textContent = '';
@@ -380,6 +437,7 @@
 		}
 		battleTipName.textContent = host.dataset.battleName || '';
 		battleTipAttr.textContent = host.dataset.battleAttr || '—';
+		fillBattleTooltipPowerSection(host);
 		fillBattleTooltipAbility(battleTipAbility, host.dataset.battleAbility || '');
 		battleTipEl.hidden = false;
 		positionBattleCardTooltip(clientX, clientY);
@@ -1296,7 +1354,11 @@
 		if (d) {
 			const wrap = el('div', 'library-card battle-zone-card', null);
 			// Under-cards (cost/levelup): show as a small fanned stack of card backs
-			const under = Array.isArray(zone.under) ? zone.under : [];
+			const under = Array.isArray(zone.costUnder)
+				? zone.costUnder
+				: Array.isArray(zone.under)
+					? zone.under
+					: [];
 			if (under.length) {
 				const stack = el('div', '', null);
 				stack.style.position = 'absolute';
@@ -1358,6 +1420,7 @@
 				wrap.appendChild(chrome);
 			}
 			applyBattleCardTipData(wrap, d);
+			setBattleZonePowerContributorsDataset(wrap, zone.powerModifiers);
 			box.appendChild(wrap);
 		}
 		box.appendChild(el('p', 'muted', '強さ: ' + String(power)));
@@ -1797,8 +1860,9 @@
 		document.body.appendChild(overlay);
 	}
 
-	function showBattleZoneDetailModal(def) {
+	function showBattleZoneDetailModal(def, powerContributors) {
 		if (!def) return;
+		const contributors = Array.isArray(powerContributors) ? powerContributors : [];
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
 
@@ -1846,6 +1910,31 @@
 		const first = lines.length ? String(lines[0]).trim() : '';
 		ability.textContent = (first === '〈配置〉' || first === '〈常時〉') ? lines.slice(1).join('\n') : String(raw || '—');
 		right.appendChild(ability);
+
+		if (contributors.length) {
+			right.appendChild(el('p', 'battle-zone-detail-modal__label', '強さの変動要因'));
+			const srcWrap = el('div', 'battle-zone-detail-modal__power-sources');
+			const defs = lastDefsForTooltip;
+			contributors.forEach(function (mod) {
+				const line = el('div', 'battle-zone-detail-modal__power-line');
+				const id = mod && mod.sourceCardId != null ? mod.sourceCardId : mod && mod.sourceCardId === 0 ? 0 : null;
+				const srcDef = id != null && defs ? resolveCardDef(defs, id) : null;
+				const text = formatBattlePowerContributorText(defs, mod);
+				if (srcDef) {
+					const b = el('button', 'battle-zone-detail-modal__source-link', text);
+					b.type = 'button';
+					b.addEventListener('click', function () {
+						teardown();
+						showBattleZoneDetailModal(srcDef, []);
+					});
+					line.appendChild(b);
+				} else {
+					line.appendChild(el('span', 'muted', text));
+				}
+				srcWrap.appendChild(line);
+			});
+			right.appendChild(srcWrap);
+		}
 
 		grid.appendChild(left);
 		grid.appendChild(right);
@@ -2248,7 +2337,7 @@
 			if (zoneCard && zoneCard instanceof HTMLElement) {
 				const cid = zoneCard.dataset.battleCardId;
 				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
-				if (d) showBattleZoneDetailModal(d);
+				if (d) showBattleZoneDetailModal(d, parseBattlePowerContributorsFromHost(zoneCard));
 				return;
 			}
 
@@ -2346,6 +2435,32 @@
 			if (ui.selectedInstanceId) {
 				cancelLevelUpInProgress();
 				rerenderWithFreshState();
+			}
+		});
+
+		app.addEventListener('contextmenu', function (e) {
+			const t = e.target;
+			if (!(t instanceof Element)) return;
+
+			const zoneCard = t.closest('.battle-zone-card');
+			if (zoneCard && zoneCard instanceof HTMLElement) {
+				const cid = zoneCard.dataset.battleCardId;
+				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				if (d) {
+					e.preventDefault();
+					showBattleZoneDetailModal(d, parseBattlePowerContributorsFromHost(zoneCard));
+				}
+				return;
+			}
+
+			const handBtn = t.closest('button.hand-card.battle-card');
+			if (handBtn && handBtn instanceof HTMLButtonElement) {
+				const cid = handBtn.dataset.cardId;
+				const d = cid ? resolveCardDef(lastDefsForTooltip, cid) : null;
+				if (d) {
+					e.preventDefault();
+					showBattleZoneDetailModal(d, []);
+				}
 			}
 		});
 	}
