@@ -842,6 +842,29 @@ body {
 	color: var(--text);
 }
 
+/*
+ * バトル：#battle-card-tooltip にも .library-page-tooltip が付いているが、
+ * ライブラリ用2カラム grid は構造が異なりプレビューが列幅で切れるため、
+ * バトルだけ縦並びに上書きする。
+ */
+.page--battle #battle-card-tooltip.deck-tooltip {
+	max-width: min(420px, 96vw);
+	overflow: visible;
+}
+.page--battle #battle-card-tooltip .deck-tooltip__inner {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	grid-template-columns: unset;
+	grid-template-areas: none;
+	column-gap: unset;
+}
+.page--battle #battle-card-tooltip .battle-card-tooltip__preview {
+	flex: 0 0 auto;
+	overflow: visible;
+	min-width: 0;
+}
+
 /* バトル：カード詳細ツールチップ上部にカードを中央表示 */
 .page--battle .battle-card-tooltip__preview {
 	display: flex;

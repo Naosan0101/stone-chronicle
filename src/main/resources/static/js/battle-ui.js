@@ -1567,16 +1567,40 @@
 		return await res.json();
 	}
 
+	/** render のたびに重ねてしまうと、OK/決定が手前の1枚だけ閉じて下に残るため同一内容なら作り直さない */
+	function pendingChoiceModalKey(pc) {
+		if (!pc || typeof pc !== 'object') return '';
+		const ids = (pc.optionInstanceIds || []).slice().sort().join(',');
+		return [
+			String(pc.kind || ''),
+			String(pc.prompt || ''),
+			String(pc.stoneCost != null ? pc.stoneCost : ''),
+			String(pc.abilityDeployCode || ''),
+			pc.cpuSlotChooses ? '1' : '0',
+			String(pc.viewerMayRespond !== undefined && pc.viewerMayRespond !== null ? pc.viewerMayRespond : ''),
+			ids
+		].join('\x1f');
+	}
+
 	function showChoiceModal(st) {
 		const pc = st.pendingChoice;
 		if (!pc) return;
 		const may = pc.viewerMayRespond !== undefined && pc.viewerMayRespond !== null ? pc.viewerMayRespond : pc.forHuman;
 		if (!may) return;
 
+		const choiceKey = pendingChoiceModalKey(pc);
+		const existingChoice = document.getElementById('battle-pending-choice-modal');
+		if (existingChoice && existingChoice.dataset.pendingKey === choiceKey) {
+			return;
+		}
+		if (existingChoice) existingChoice.remove();
+
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();
 
 		const overlay = el('div', 'battle-pay-modal');
+		overlay.id = 'battle-pending-choice-modal';
+		overlay.dataset.pendingKey = choiceKey;
 		overlay.setAttribute('role', 'dialog');
 		overlay.setAttribute('aria-modal', 'true');
 
@@ -1620,7 +1644,10 @@
 			actions.appendChild(yesBtn);
 			panel.appendChild(actions);
 
-			function teardown() { overlay.remove(); }
+			function teardown() {
+				hideBattleCardTooltip();
+				overlay.remove();
+			}
 			closeBtn.addEventListener('click', teardown);
 			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
 
@@ -1658,7 +1685,10 @@
 			actions.appendChild(okBtn);
 			panel.appendChild(actions);
 
-			function teardown() { overlay.remove(); }
+			function teardown() {
+				hideBattleCardTooltip();
+				overlay.remove();
+			}
 			closeBtn.addEventListener('click', teardown);
 			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
 
@@ -1690,7 +1720,11 @@
 				const btn = el('button', 'battle-pay-modal__card', null);
 				btn.type = 'button';
 				btn.dataset.instanceId = inst;
-				if (d) btn.appendChild(buildBattleCardFaceShell(d, 'modal'));
+				if (d) {
+					btn.appendChild(buildBattleCardFaceShell(d, 'modal'));
+					applyBattleCardTipData(btn, d);
+					wireBattleCardTooltipHost(btn);
+				}
 				grid.appendChild(btn);
 			});
 			panel.appendChild(grid);
@@ -1698,7 +1732,7 @@
 			const actions = el('div', 'battle-pay-modal__actions');
 			const cancel = el('button', 'btn btn--ghost', 'キャンセル');
 			cancel.type = 'button';
-			const ok = el('button', 'btn btn--primary', 'OK');
+			const ok = el('button', 'btn btn--primary', '決定');
 			ok.type = 'button';
 			ok.disabled = true;
 			actions.appendChild(cancel);
@@ -1736,7 +1770,10 @@
 				refresh();
 			});
 
-			function teardown() { overlay.remove(); }
+			function teardown() {
+				hideBattleCardTooltip();
+				overlay.remove();
+			}
 			closeBtn.addEventListener('click', teardown);
 			cancel.addEventListener('click', teardown);
 			overlay.addEventListener('click', function (e) { if (e.target === overlay) teardown(); });
@@ -1902,7 +1939,7 @@
 			zonesWrap.appendChild(zonesStack);
 
 			const controlCluster = buildHumanControlOverlayCluster(st);
-			if (controlCluster && selectedCard(st)) {
+			if (controlCluster && selectedCard(st) && st.phase !== 'HUMAN_CHOICE') {
 				const overlay = el('div', 'battle-control-overlay');
 				overlay.setAttribute('role', 'region');
 				overlay.setAttribute('aria-label', 'レベルアップ');
