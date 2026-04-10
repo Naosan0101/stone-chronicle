@@ -17,6 +17,14 @@ public class CpuBattleState implements Serializable {
 	/** CPU側の「ターン開始」回数（先攻1ターン目の例外判定用） */
 	private int cpuTurnStarts;
 	private BattlePhase phase = BattlePhase.HUMAN_INPUT;
+	/** 現在の手番の開始時刻（ms）。持ち時間カウント用（HUMAN_INPUT / CPU_THINKING のみ進む） */
+	private long turnStartedAtMs;
+	/**
+	 * 持ち時間ペナルティ段階（0:90s → 1:60s → 2:30s → 3:15s。段階3で時間切れしたら強制降参）
+	 * human はホスト側、cpu はゲスト側（CPU戦では cpu=CPU）。
+	 */
+	private int humanTimePenaltyStage;
+	private int cpuTimePenaltyStage;
 	/** 配置後、効果表示→resolve で処理するための保留 */
 	private PendingEffect pendingEffect;
 	/** 人間の選択が必要な場合の保留（任意効果/対象選択など） */

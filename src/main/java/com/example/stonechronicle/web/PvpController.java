@@ -196,6 +196,18 @@ public class PvpController {
 		}
 	}
 
+	@PostMapping(value = "/api/{id}/timeout", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> apiTimeout(@PathVariable String id) {
+		try {
+			var dto = pvpBattleService.timeoutTick(id, CurrentUser.require().getId());
+			if (dto == null) return ResponseEntity.notFound().build();
+			return ResponseEntity.ok(dto);
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().build();
+		}
+	}
+
 	@PostMapping("/api/{id}/surrender")
 	public String apiSurrender(@PathVariable String id, RedirectAttributes ra) {
 		try {

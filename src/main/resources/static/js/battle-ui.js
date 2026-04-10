@@ -49,8 +49,49 @@
 		_luPrevPower: null,
 		_resultShown: false,
 		_resultModalEl: null,
-		_pvpPollTimer: null
+		_pvpPollTimer: null,
+		_turnTimer: null
 	};
+
+	const turnTimer = {
+		key: null,
+		warned30: false,
+		warned15: false,
+		firing: false
+	};
+
+	function pad2(n) {
+		const s = String(Math.max(0, n | 0));
+		return s.length >= 2 ? s : ('0' + s);
+	}
+
+	function fmtMmSs(totalSec) {
+		const s = Math.max(0, totalSec | 0);
+		const m = Math.floor(s / 60);
+		const r = s % 60;
+		return pad2(m) + ':' + pad2(r);
+	}
+
+	function ensureBattleToast() {
+		let t = document.getElementById('battle-toast');
+		if (t) return t;
+		t = el('div', 'battle-toast', '');
+		t.id = 'battle-toast';
+		t.hidden = true;
+		document.body.appendChild(t);
+		return t;
+	}
+
+	function showBattleToast(text, kind) {
+		const t = ensureBattleToast();
+		t.classList.remove('battle-toast--warn', 'battle-toast--danger');
+		if (kind) t.classList.add('battle-toast--' + kind);
+		t.textContent = text || '';
+		t.hidden = false;
+		window.setTimeout(function () {
+			t.hidden = true;
+		}, 2600);
+	}
 
 	function teardownResultModal() {
 		if (ui._resultModalEl && ui._resultModalEl.parentNode) {
@@ -473,6 +514,15 @@
 		const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
 		if (res.status === 204) return null;
 		if (!res.ok) throw new Error('state fetch failed: ' + res.status);
+		return await res.json();
+	}
+
+	async function timeoutTick() {
+		const headers = { 'Accept': 'application/json' };
+		if (csrfToken) headers[csrfHeader] = csrfToken;
+		const url = battleIsPvp ? (battleApiBase + '/timeout') : (contextPath + '/battle/cpu/timeout');
+		const res = await fetch(url, { method: 'POST', headers });
+		if (!res.ok) throw new Error('timeout failed: ' + res.status);
 		return await res.json();
 	}
 
@@ -2029,7 +2079,8 @@
 
 			const controlCluster = buildHumanControlOverlayCluster(st);
 			if (controlCluster && selectedCard(st) && st.phase !== 'HUMAN_CHOICE') {
-				const overlay = el('div', 'battle-control-overlay');
+				// Level-up is a popup overlay (do not move center zone cards).
+				const overlay = el('div', 'battle-control-overlay battle-control-overlay--levelup-popup');
 				overlay.setAttribute('role', 'region');
 				overlay.setAttribute('aria-label', 'レベルアップ');
 				overlay.appendChild(controlCluster);
@@ -2078,6 +2129,8 @@
 		}
 
 		wireBattleCardTooltips(app);
+
+		installOrUpdateTurnTimer(st);
 
 		// game over modal (only once per battle end)
 		maybeShowGameOverModal(st);
@@ -2221,6 +2274,75 @@
 		if (st.phase === 'HUMAN_CHOICE' && st.pendingChoice && !st.gameOver) {
 			showChoiceModal(st);
 		}
+	}
+
+	function installOrUpdateTurnTimer(st) {
+		// 制限時間・時間切れ処理は無効化（タイマーUIも表示しない）
+		if (ui._turnTimer != null) {
+			clearInterval(ui._turnTimer);
+			ui._turnTimer = null;
+		}
+		return;
+
+		const startedAt = Number(st.turnStartedAtMs || 0);
+		const limitSec = Number(st.activeTimeLimitSec || 0);
+		const stage = Number(st.activePenaltyStage || 0);
+		const phase = String(st.phase || '');
+		const counts = (phase === 'HUMAN_INPUT' || phase === 'CPU_THINKING' || phase === 'OPPONENT_TURN');
+
+		const key = String(startedAt) + ':' + String(limitSec) + ':' + phase;
+		if (turnTimer.key !== key) {
+			turnTimer.key = key;
+			turnTimer.warned30 = false;
+			turnTimer.warned15 = false;
+			turnTimer.firing = false;
+		}
+
+		function tick() {
+			const box = document.getElementById('battle-turn-timer');
+			if (!box) return;
+			box.classList.remove('battle-turn-timer--warn', 'battle-turn-timer--danger');
+
+			if (!counts || !startedAt || !limitSec) {
+				box.textContent = '持ち時間: --:--';
+				return;
+			}
+
+			const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+			const remain = limitSec - Math.max(0, elapsed);
+			box.textContent = '持ち時間: ' + fmtMmSs(remain) + ' / ' + fmtMmSs(limitSec);
+
+			if (remain <= 15) {
+				box.classList.add('battle-turn-timer--danger');
+			} else if (remain <= 30) {
+				box.classList.add('battle-turn-timer--warn');
+			}
+
+			if (!turnTimer.warned30 && remain <= 30 && remain > 15) {
+				turnTimer.warned30 = true;
+				showBattleToast('残り30秒です', 'warn');
+			}
+			if (!turnTimer.warned15 && remain <= 15 && remain > 0) {
+				turnTimer.warned15 = true;
+				showBattleToast('残り15秒です', 'danger');
+			}
+
+			if (remain <= 0 && !turnTimer.firing) {
+				turnTimer.firing = true;
+				showBattleToast(stage >= 3 ? '時間切れ（降参扱い）' : '時間切れ（ターン終了）', 'danger');
+				timeoutTick().then(function (next) {
+					turnTimer.firing = false;
+					render(next);
+				}).catch(function () {
+					turnTimer.firing = false;
+				});
+			}
+		}
+
+		if (ui._turnTimer == null) {
+			ui._turnTimer = window.setInterval(tick, 250);
+		}
+		tick();
 	}
 
 	function fillBattleLogList(lines) {

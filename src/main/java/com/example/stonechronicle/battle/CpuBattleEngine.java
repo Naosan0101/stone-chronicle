@@ -747,6 +747,8 @@ public class CpuBattleEngine {
 		if (st == null || st.isGameOver()) {
 			return;
 		}
+		// ターン開始：持ち時間カウント開始（ms）
+		st.setTurnStartedAtMs(System.currentTimeMillis());
 
 		// 「次の相手ターン終了まで」系の一時効果は、所有者の次ターン開始時に切れる
 		if (forHuman) {
@@ -777,6 +779,16 @@ public class CpuBattleEngine {
 			st.setCpuStones(st.getCpuStones() + 1);
 			st.addLog("CPUはストーンを1つ得た");
 		}
+	}
+
+	public static int timeLimitSecForStage(int stage) {
+		return switch (stage) {
+			case 0 -> 90;
+			case 1 -> 60;
+			case 2 -> 30;
+			case 3 -> 15;
+			default -> 15;
+		};
 	}
 
 	private CpuBattleState copyState(CpuBattleState st) {
@@ -1358,6 +1370,20 @@ public class CpuBattleEngine {
 			st.setPhase(BattlePhase.HUMAN_INPUT);
 			beginTurnGainStone(st, true);
 		}
+		st.setLastMessage(st.isPvp() ? "ホストのターン" : "あなたのターン");
+	}
+
+	/** CPU戦: CPU 手番を「配置スキップ」で強制終了する（時間切れ用）。 */
+	public void forceCpuSkipTurnDueToTimeout(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		if (st == null || st.isGameOver() || st.isHumansTurn() || st.getPhase() != BattlePhase.CPU_THINKING) {
+			return;
+		}
+		st.addLog("CPUは時間切れで配置をスキップした");
+		resolveKnockAndDraw(st, false, defs);
+		resetTurnBuffs(st);
+		st.setHumansTurn(true);
+		st.setPhase(BattlePhase.HUMAN_INPUT);
+		beginTurnGainStone(st, true);
 		st.setLastMessage(st.isPvp() ? "ホストのターン" : "あなたのターン");
 	}
 

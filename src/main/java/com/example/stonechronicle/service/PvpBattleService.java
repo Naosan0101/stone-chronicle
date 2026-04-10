@@ -58,6 +58,9 @@ public class PvpBattleService {
 			List<Short> guestCards = deckService.cardIdsForDeck(guestDeckId);
 			CpuBattleState st = engine.newPvpBattle(hostCards, guestCards, rnd, defs);
 			st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
+			if (st.getTurnStartedAtMs() <= 0) {
+				st.setTurnStartedAtMs(System.currentTimeMillis());
+			}
 			m.setState(st);
 		}
 	}
@@ -75,6 +78,7 @@ public class PvpBattleService {
 			if (st == null) {
 				return null;
 			}
+			enforceTimeoutIfNeeded(st);
 			CpuBattleStateDto base = cpuBattleService.stateDtoFromState(st);
 			boolean host = m.getHostUserId() == userId;
 			return adaptForViewer(base, st, host);
@@ -89,6 +93,7 @@ public class PvpBattleService {
 			if (st == null || st.isGameOver()) {
 				return null;
 			}
+			enforceTimeoutIfNeeded(st);
 			boolean host = m.getHostUserId() == userId;
 			if (host) {
 				if (!st.isHumansTurn() || st.getPhase() != BattlePhase.HUMAN_INPUT) {
@@ -127,6 +132,7 @@ public class PvpBattleService {
 			if (st == null) {
 				return null;
 			}
+			enforceTimeoutIfNeeded(st);
 			boolean host = m.getHostUserId() == userId;
 			engine.resolvePendingEffectAndAdvance(st, cardCatalogService.mapById(), new Random());
 			return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, host);
@@ -141,6 +147,7 @@ public class PvpBattleService {
 			if (st == null) {
 				return null;
 			}
+			enforceTimeoutIfNeeded(st);
 			boolean host = m.getHostUserId() == userId;
 			PendingChoice pc = st.getPendingChoice();
 			if (pc != null) {
@@ -163,6 +170,26 @@ public class PvpBattleService {
 				}
 			}
 			return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, host);
+		}
+	}
+
+	public CpuBattleStateDto timeoutTick(String matchId, long userId) {
+		PvpMatch m = require(matchId);
+		synchronized (m) {
+			requireParticipant(m, userId);
+			CpuBattleState st = m.getState();
+			if (st == null) return null;
+			enforceTimeoutIfNeeded(st);
+			boolean host = m.getHostUserId() == userId;
+			return adaptForViewer(cpuBattleService.stateDtoFromState(st), st, host);
+		}
+	}
+
+	private void enforceTimeoutIfNeeded(CpuBattleState st) {
+		if (st == null || st.isGameOver()) return;
+		// 制限時間・時間切れ強制処理は無効化
+		if (st.getTurnStartedAtMs() <= 0) {
+			st.setTurnStartedAtMs(System.currentTimeMillis());
 		}
 	}
 
@@ -285,6 +312,9 @@ public class PvpBattleService {
 				b.humanGoesFirst(),
 				!b.humansTurn(),
 				b.phase(),
+				b.turnStartedAtMs(),
+				b.activeTimeLimitSec(),
+				b.activePenaltyStage(),
 				b.cpuStones(),
 				b.humanStones(),
 				b.cpuDeck(),
@@ -313,6 +343,7 @@ public class PvpBattleService {
 	private CpuBattleStateDto replacePhase(CpuBattleStateDto b, String phase) {
 		return new CpuBattleStateDto(
 				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), phase,
+				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
 				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
 				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(),
 				b.humanBattlePower(), b.cpuBattlePower(),
@@ -334,6 +365,7 @@ public class PvpBattleService {
 				pc.abilityDeployCode(), pc.stoneCost(), pc.optionInstanceIds(), may);
 		return new CpuBattleStateDto(
 				b.pvpMatch(), b.cpuLevel(), b.humanGoesFirst(), b.humansTurn(), b.phase(),
+				b.turnStartedAtMs(), b.activeTimeLimitSec(), b.activePenaltyStage(),
 				b.humanStones(), b.cpuStones(), b.humanDeck(), b.humanHand(), b.humanRest(), b.humanBattle(),
 				b.cpuDeck(), b.cpuHand(), b.cpuRest(), b.cpuBattle(),
 				b.humanBattlePower(), b.cpuBattlePower(),

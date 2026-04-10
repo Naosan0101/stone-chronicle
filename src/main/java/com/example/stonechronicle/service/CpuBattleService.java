@@ -43,6 +43,9 @@ public class CpuBattleService {
 		Random rnd = new Random();
 		CpuBattleState st = engine.newBattle(ids, level, rnd, defs);
 		st.setPhase(st.isHumansTurn() ? BattlePhase.HUMAN_INPUT : BattlePhase.CPU_THINKING);
+		if (st.getTurnStartedAtMs() <= 0) {
+			st.setTurnStartedAtMs(System.currentTimeMillis());
+		}
 		session.setAttribute(SESSION_KEY, st);
 		missionService.onCpuBattleStarted(userId);
 		return st;
@@ -78,6 +81,7 @@ public class CpuBattleService {
 		if (st == null) {
 			return null;
 		}
+		enforceTimeoutIfNeeded(st, defs());
 		engine.humanTurnInteractive(st, levelUpRest, levelUpDiscardInstanceIds, levelUpStones, deployInstanceId, payCostStones, payCostCardInstanceIds, defs());
 		return stateDto(session);
 	}
@@ -87,6 +91,7 @@ public class CpuBattleService {
 		if (st == null) {
 			return null;
 		}
+		enforceTimeoutIfNeeded(st, defs());
 		return stateDtoFromState(st);
 	}
 
@@ -94,6 +99,9 @@ public class CpuBattleService {
 		Map<Short, CardDefinition> defs = defs();
 		int hbPow = engine.effectiveBattlePower(st.getHumanBattle(), true, st, defs);
 		int cbPow = engine.effectiveBattlePower(st.getCpuBattle(), false, st, defs);
+		boolean activeHuman = st.isHumansTurn();
+		int activeStage = activeHuman ? st.getHumanTimePenaltyStage() : st.getCpuTimePenaltyStage();
+		int activeLimit = CpuBattleEngine.timeLimitSecForStage(activeStage);
 
 		Map<Short, CardDefDto> defDtos = defs.values().stream()
 				.collect(Collectors.toMap(
@@ -131,6 +139,9 @@ public class CpuBattleService {
 				st.isHumanGoesFirst(),
 				st.isHumansTurn(),
 				st.getPhase() != null ? st.getPhase().name() : null,
+				st.getTurnStartedAtMs(),
+				activeLimit,
+				activeStage,
 				st.getHumanStones(),
 				st.getCpuStones(),
 				st.getHumanDeck().stream().map(c -> new BattleCardDto(c.getInstanceId(), c.getCardId())).toList(),
@@ -179,6 +190,7 @@ public class CpuBattleService {
 		if (st == null) {
 			return null;
 		}
+		enforceTimeoutIfNeeded(st, defs());
 		engine.cpuTurn(st, defs(), new Random());
 		return stateDto(session);
 	}
@@ -188,6 +200,7 @@ public class CpuBattleService {
 		if (st == null) {
 			return null;
 		}
+		enforceTimeoutIfNeeded(st, defs());
 		engine.resolvePendingEffectAndAdvance(st, defs(), new Random());
 		return stateDto(session);
 	}
@@ -197,6 +210,7 @@ public class CpuBattleService {
 		if (st == null) {
 			return null;
 		}
+		enforceTimeoutIfNeeded(st, defs());
 		engine.applyHumanChoiceAndAdvance(
 				st,
 				req != null && req.confirm(),
@@ -205,6 +219,21 @@ public class CpuBattleService {
 				new Random()
 		);
 		return stateDto(session);
+	}
+
+	public CpuBattleStateDto timeoutTick(HttpSession session) {
+		CpuBattleState st = current(session);
+		if (st == null) return null;
+		enforceTimeoutIfNeeded(st, defs());
+		return stateDtoFromState(st);
+	}
+
+	private void enforceTimeoutIfNeeded(CpuBattleState st, Map<Short, CardDefinition> defs) {
+		if (st == null || st.isGameOver()) return;
+		// 制限時間・時間切れ強制処理は無効化
+		if (st.getTurnStartedAtMs() <= 0) {
+			st.setTurnStartedAtMs(System.currentTimeMillis());
+		}
 	}
 
 	private static ZoneFighterDto toZoneDto(ZoneFighter z, List<BattlePowerModifierDto> powerModifiers) {

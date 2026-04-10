@@ -115,6 +115,14 @@ public class CpuBattleController {
 		return ResponseEntity.ok(dto);
 	}
 
+	@PostMapping(value = "/timeout", produces = "application/json")
+	@ResponseBody
+	public ResponseEntity<?> timeout(HttpSession session) {
+		var dto = cpuBattleService.timeoutTick(session);
+		if (dto == null) return ResponseEntity.notFound().build();
+		return ResponseEntity.ok(dto);
+	}
+
 	@PostMapping(value = "/choice", consumes = "application/json", produces = "application/json")
 	@ResponseBody
 	public ResponseEntity<?> choice(@RequestBody CpuBattleChoiceRequest req, HttpSession session) {
