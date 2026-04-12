@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: stone-chronicle-db
+    container_name: nine-universe-db
     environment:
       POSTGRES_DB: springdb
       POSTGRES_USER: springuser
@@ -9,13 +9,19 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - stone-chronicle-pgdata:/var/lib/postgresql/data
+      - nine-universe-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U springuser -d springdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   app:
     build: .
-    container_name: stone-chronicle-app
+    container_name: nine-universe-app
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/springdb
       SPRING_DATASOURCE_USERNAME: springuser
@@ -24,4 +30,4 @@ services:
       - "8080:8080"
 
 volumes:
-  stone-chronicle-pgdata:
+  nine-universe-pgdata:

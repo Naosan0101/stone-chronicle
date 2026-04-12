@@ -11,7 +11,7 @@
 	const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
 	const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
 	const cardBack = document.querySelector('meta[name="card_back"]')?.getAttribute('content') || '';
-	const contextPath = document.querySelector('meta[name="stone_context_path"]')?.getAttribute('content') || '';
+	const contextPath = document.querySelector('meta[name="nine_universe_context_path"]')?.getAttribute('content') || '';
 	const plateFbFull = document.querySelector('meta[name="card_plate_fallback"]')?.getAttribute('content') || '';
 	const dataFbFull = document.querySelector('meta[name="card_data_fallback"]')?.getAttribute('content') || '';
 	const pvpMatchId = document.querySelector('meta[name="pvp_match_id"]')?.getAttribute('content') || '';

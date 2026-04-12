@@ -1,5 +1,5 @@
 (function () {
-	const contextPath = document.querySelector('meta[name="stone_context_path"]')?.getAttribute('content') || '';
+	const contextPath = document.querySelector('meta[name="nine_universe_context_path"]')?.getAttribute('content') || '';
 	const plateFbFull = document.querySelector('meta[name="card_plate_fallback"]')?.getAttribute('content') || '';
 	const dataFbFull = document.querySelector('meta[name="card_data_fallback"]')?.getAttribute('content') || '';
 	function staticUrl(path) {

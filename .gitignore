@@ -38,3 +38,4 @@ out/
 
 ### Node (Electron desktop shell) ###
 electron/node_modules/
+electron/dist/

@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.stonechronicle.repository.CardDefinitionMapper">
+<mapper namespace="com.example.nineuniverse.repository.CardDefinitionMapper">
 
-	<select id="findAll" resultType="com.example.stonechronicle.domain.CardDefinition">
+	<select id="findAll" resultType="com.example.nineuniverse.domain.CardDefinition">
 		SELECT id, name, cost, base_power AS basePower, attribute, rarity, image_file AS imageFile,
 		       ability_deploy_code AS abilityDeployCode, ability_passive_code AS abilityPassiveCode,
 		       deploy_help AS deployHelp, passive_help AS passiveHelp
 		FROM card_definition ORDER BY id
 	</select>
 
-	<select id="findById" resultType="com.example.stonechronicle.domain.CardDefinition">
+	<select id="findById" resultType="com.example.nineuniverse.domain.CardDefinition">
 		SELECT id, name, cost, base_power AS basePower, attribute, rarity, image_file AS imageFile,
 		       ability_deploy_code AS abilityDeployCode, ability_passive_code AS abilityPassiveCode,
 		       deploy_help AS deployHelp, passive_help AS passiveHelp

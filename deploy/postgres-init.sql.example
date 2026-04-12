@@ -1,0 +1,4 @@
+-- psql -U postgres -f postgres-init.sql.example で実行（パスワードは変更すること）
+
+CREATE USER nineuniverse WITH PASSWORD '強いパスワードに変更';
+CREATE DATABASE nineuniverse OWNER nineuniverse;

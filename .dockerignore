@@ -1,0 +1,8 @@
+.git
+.gradle
+build
+electron/node_modules
+*.md
+.idea
+.vscode
+**/.DS_Store

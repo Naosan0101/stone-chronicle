@@ -1,15 +1,41 @@
 {
-  "name": "stone-chronicle-desktop",
+  "name": "nine-universe-desktop",
   "version": "0.1.0",
-  "private": true,
-  "description": "Electron shell for Stone Chronicle (loads local Spring or production URL)",
+  "description": "Dedicated window shell for nine-universe.jp (Steam / desktop)",
   "main": "main.js",
+  "private": true,
+  "author": "Nine Universe",
   "scripts": {
     "start": "electron .",
-    "start:prod": "cross-env STONE_CHRONICLE_URL=https://nine-universe.jp electron ."
+    "start:local": "cross-env NINE_UNIVERSE_URL=http://127.0.0.1:8080 electron .",
+    "dist": "electron-builder --win --x64",
+    "dist:dir": "electron-builder --win --x64 --dir"
+  },
+  "build": {
+    "appId": "jp.nine-universe.desktop",
+    "productName": "Nine Universe",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
-    "electron": "^34.0.0"
+    "electron": "^34.0.0",
+    "electron-builder": "^26.0.0"
   }
 }

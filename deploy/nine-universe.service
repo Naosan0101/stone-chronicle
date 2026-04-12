@@ -1,0 +1,19 @@
+[Unit]
+Description=Nine Universe (Spring Boot)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=nineuniverse
+Group=nineuniverse
+WorkingDirectory=/opt/nine-universe
+EnvironmentFile=-/etc/nine-universe.env
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/nine-universe/nine-universe.jar
+Restart=on-failure
+RestartSec=5
+
+# セキュリティ（必要に応じて調整）
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

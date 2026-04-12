@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.stonechronicle.repository.AppUserMapper">
+<mapper namespace="com.example.nineuniverse.repository.AppUserMapper">
 
-	<select id="findByUsername" resultType="com.example.stonechronicle.domain.AppUser">
+	<select id="findByUsername" resultType="com.example.nineuniverse.domain.AppUser">
 		SELECT id, username, password_hash AS passwordHash, coins,
 		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
 		       last_mission_date AS lastMissionDate, created_at AS createdAt,
@@ -10,7 +10,7 @@
 		FROM app_user WHERE username = #{username}
 	</select>
 
-	<select id="findById" resultType="com.example.stonechronicle.domain.AppUser">
+	<select id="findById" resultType="com.example.nineuniverse.domain.AppUser">
 		SELECT id, username, password_hash AS passwordHash, coins,
 		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
 		       last_mission_date AS lastMissionDate, created_at AS createdAt,

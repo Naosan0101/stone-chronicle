@@ -5,7 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>対戦待機 — ナインユニバース</title>
 	<link rel="stylesheet" th:href="@{/css/app.css}"/>
-	<meta name="stone_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
+	<meta name="nine_universe_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
 </head>
 <body class="page">
 <header class="topbar">
@@ -33,7 +33,7 @@
 <script th:inline="javascript">
 (function () {
 	const matchId = /*[[${matchId}]]*/ '';
-	const contextPath = document.querySelector('meta[name="stone_context_path"]')?.getAttribute('content') || '';
+	const contextPath = document.querySelector('meta[name="nine_universe_context_path"]')?.getAttribute('content') || '';
 	const statusEl = document.getElementById('pvp-wait-status');
 	const copyBtn = document.getElementById('pvp-copy-join-url');
 	const copyFb = document.getElementById('pvp-copy-feedback');

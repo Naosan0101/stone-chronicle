@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.stonechronicle.repository.UserDailyMissionMapper">
+<mapper namespace="com.example.nineuniverse.repository.UserDailyMissionMapper">
 
-	<select id="findByUserAndDate" resultType="com.example.stonechronicle.domain.UserDailyMission">
+	<select id="findByUserAndDate" resultType="com.example.nineuniverse.domain.UserDailyMission">
 		SELECT user_id AS userId, mission_date AS missionDate, slot, mission_code AS missionCode,
 		       title, target_count AS targetCount, progress, reward_granted AS rewardGranted
 		FROM user_daily_mission WHERE user_id = #{userId} AND mission_date = #{missionDate} ORDER BY slot

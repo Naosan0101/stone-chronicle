@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.stonechronicle.repository.UserWeeklyMissionMapper">
+<mapper namespace="com.example.nineuniverse.repository.UserWeeklyMissionMapper">
 
-	<select id="findByUserAndWeekStart" resultType="com.example.stonechronicle.domain.UserWeeklyMission">
+	<select id="findByUserAndWeekStart" resultType="com.example.nineuniverse.domain.UserWeeklyMission">
 		SELECT user_id AS userId, week_start AS weekStart, slot, mission_code AS missionCode,
 		       title, target_count AS targetCount, progress, reward_granted AS rewardGranted
 		FROM user_weekly_mission WHERE user_id = #{userId} AND week_start = #{weekStart} ORDER BY slot
