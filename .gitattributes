@@ -1,3 +1,5 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
+# bash は LF 必須（CRLF だと set -euo pipefail で失敗する）
+*.sh text eol=lf
 *.jar binary

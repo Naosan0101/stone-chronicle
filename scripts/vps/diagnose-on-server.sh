@@ -16,3 +16,10 @@ journalctl -u nine-universe -n 40 --no-pager 2>/dev/null || true
 echo ""
 echo "=== UFW ==="
 sudo ufw status 2>/dev/null || echo "(ufw なし)"
+echo ""
+echo "=== Nginx ==="
+systemctl is-active nginx 2>/dev/null || true
+curl -sI -m 5 http://127.0.0.1/login 2>&1 | head -5 || true
+echo ""
+echo "=== 443 TLS（証明書取得後） ==="
+ss -tlnp 2>/dev/null | grep ':443' || echo "(443 で LISTEN していません。certbot 前は正常)"

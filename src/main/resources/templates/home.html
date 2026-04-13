@@ -83,6 +83,11 @@
 			<span class="tile__label">ミッション</span>
 			<span class="tile__hint">ジェムを獲得</span>
 		</a>
+		<a class="tile" th:href="@{/how-to-play}">
+			<span class="tile__icon" aria-hidden="true">?</span>
+			<span class="tile__label">遊び方</span>
+			<span class="tile__hint">ルールと流れ</span>
+		</a>
 	</main>
 
 	<section class="panel" th:if="${missions != null && !missions.isEmpty()}">

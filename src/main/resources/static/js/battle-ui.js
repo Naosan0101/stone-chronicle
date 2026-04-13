@@ -768,11 +768,14 @@
 		closeBtn.type = 'button';
 		panel.appendChild(closeBtn);
 
-		panel.appendChild(el('h2', 'battle-pay-modal__title', 'コストの支払い方法'));
-		panel.appendChild(el('p', 'muted', '必要コスト: ' + String(cost) + '（カード/ストーン/分割OK）'));
+		const layout = el('div', 'battle-pay-modal__layout');
+		const mainCol = el('div', 'battle-pay-modal__main');
+
+		mainCol.appendChild(el('h2', 'battle-pay-modal__title', 'コストの支払い方法'));
+		mainCol.appendChild(el('p', 'muted', '必要コスト: ' + String(cost) + '（カード/ストーン/分割OK）'));
 
 		const status = el('p', 'battle-pay-modal__status', '');
-		panel.appendChild(status);
+		mainCol.appendChild(status);
 
 		const sectionStone = el('section', 'battle-pay-modal__section');
 		sectionStone.appendChild(el('h3', '', 'ストーンで支払う'));
@@ -786,7 +789,7 @@
 		rowStone.appendChild(stoneVal);
 		rowStone.appendChild(plus);
 		sectionStone.appendChild(rowStone);
-		panel.appendChild(sectionStone);
+		mainCol.appendChild(sectionStone);
 
 		const sectionCards = el('section', 'battle-pay-modal__section');
 		sectionCards.appendChild(el('h3', '', 'カードで支払う（手札から選択）'));
@@ -815,7 +818,7 @@
 			grid.appendChild(btn);
 		});
 		sectionCards.appendChild(grid);
-		panel.appendChild(sectionCards);
+		mainCol.appendChild(sectionCards);
 
 		const actions = el('div', 'battle-pay-modal__actions');
 		const cancel = el('button', 'btn btn--ghost', 'キャンセル');
@@ -825,7 +828,24 @@
 		ok.disabled = true;
 		actions.appendChild(cancel);
 		actions.appendChild(ok);
-		panel.appendChild(actions);
+		mainCol.appendChild(actions);
+
+		const deployCol = el('div', 'battle-pay-modal__deploy');
+		deployCol.appendChild(el('h3', 'battle-pay-modal__deploy-label', '配置するカード'));
+		if (def) {
+			const deployWrap = el('div', 'battle-pay-modal__deploy-face');
+			const deployShell = buildBattleCardFaceShell(def, 'modal');
+			applyCurrentPowerDisplayToBattleCardFace(st, st.defs, deployShell, sel.instanceId, def, { includeNextDeployBonus: true });
+			deployWrap.appendChild(deployShell);
+			applyBattleCardTipData(deployWrap, def);
+			deployCol.appendChild(deployWrap);
+		} else {
+			deployCol.appendChild(el('p', 'muted', '—'));
+		}
+
+		layout.appendChild(mainCol);
+		layout.appendChild(deployCol);
+		panel.appendChild(layout);
 
 		overlay.appendChild(panel);
 		document.body.appendChild(overlay);

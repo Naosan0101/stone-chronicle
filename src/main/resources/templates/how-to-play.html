@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>遊び方 — ナインユニバース</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<meta name="nine_universe_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
+	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
+	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
+</head>
+<body class="page page--theme-arcane page--how-to-play">
+<header class="topbar">
+	<h1 class="game-title">遊び方</h1>
+	<a class="btn btn--ghost" th:href="@{/home}">ホーム</a>
+</header>
+
+<div class="container">
+	<section class="panel how-to-play" aria-label="遊び方の説明">
+		<p class="how-to-play__lead muted">
+			ナインユニバースは、集めたカードでデッキを組んで戦う、ターン制のカードバトルです。
+		</p>
+
+		<h3 class="how-to-play__sub">コレクションとデッキ</h3>
+		<ul class="how-to-play__list">
+			<li>ジェムでカードパックを購入し、カードを集めます。</li>
+			<li>バトルに使うデッキは8枚です。同じカードは最大2枚まで入れられます。</li>
+			<li>「デッキを作成」で編集し、CPU戦・対人戦の前に使うデッキを選びます。</li>
+		</ul>
+
+		<div class="how-to-play__sample" th:if="${sampleCard != null}">
+			<h4 class="how-to-play__card-heading">カード</h4>
+			<div class="how-to-play__card-row">
+				<div class="how-to-play__card-col how-to-play__card-col--art">
+					<figure class="how-to-play__card-figure">
+						<div class="how-to-play__card-art">
+							<div th:replace="~{fragments/card-face :: layers(c=${sampleCard}, cp=${contextPath})}"></div>
+						</div>
+						<figcaption class="how-to-play__card-caption muted">サンプルカード：狩人</figcaption>
+					</figure>
+				</div>
+				<div class="how-to-play__card-col how-to-play__card-col--legend">
+					<dl class="how-to-play__card-legend">
+						<dt>コスト（カード左上の数字）</dt>
+						<dd>そのカードをバトルゾーンに出すために必要な値です。</dd>
+						<dt>強さ（カード上の数字）</dt>
+						<dd>そのカードの強さです。</dd>
+						<dt>名称（カード中央のテキスト）</dt>
+						<dd>そのカードの名前です。</dd>
+						<dt>種族（カード中央右のテキスト）</dt>
+						<dd>そのカードの種族です。</dd>
+						<dt>効果（カード下部のテキスト）</dt>
+						<dd>そのカードをバトルゾーンに出したときに発動する効果です。</dd>
+						<dt>レアリティ（カード最下部のアルファベット）</dt>
+						<dd>そのカードのレア度です。C/R/Ep/Regの順番でレアリティが上がっていきます。読み方はコモン/レア/エピック/レジェンダリーです。</dd>
+					</dl>
+				</div>
+			</div>
+		</div>
+
+		<h3 class="how-to-play__sub how-to-play__heading-gap-before">バトルの基本</h3>
+		<ol class="how-to-play__list how-to-play__list--ordered">
+			<li>先攻・後攻はランダムです。</li>
+			<li>デッキはシャッフルされ、各プレイヤー手札は4枚から始まります。</li>
+			<li>
+				ストーンは、自分のターンが始まるたびに1つ増えます。
+				<span class="muted">（先攻プレイヤーの最初のターンだけ、ストーンは増えません。）</span>
+			</li>
+			<li>
+				自分のターンでは、カードに書かれた配置コストを支払って、バトルゾーンにファイターを出します。コストは手札のカードやストーンで支払えます。<br/>
+				<span class="muted">＊カードは、レベルアップ（手札をファイターの下に差し込む操作や、ストーンを使う操作）することで「強さ」を+2して出すこともできます。</span>
+			</li>
+			<li>
+				相手のバトルゾーンにファイターがいる場合、あなたが出すファイターは、配置効果や常時効果などをすべて反映したあとの「強さ」が、
+				相手のファイター「以上」でなければいけません。
+			</li>
+			<li>カードを出せなくなったプレイヤーは敗北となります。</li>
+		</ol>
+
+		<figure class="how-to-play__diagram">
+			<div class="how-to-play__diagram-inner" aria-hidden="true">
+				<svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg" class="how-to-play__svg how-to-play__svg--compare">
+					<defs>
+						<linearGradient id="htpP1" x1="0%" y1="0%" x2="0%" y2="100%">
+							<stop offset="0%" style="stop-color:rgba(74,125,255,0.2)"/>
+							<stop offset="100%" style="stop-color:rgba(20,24,36,0.75)"/>
+						</linearGradient>
+						<linearGradient id="htpP2" x1="0%" y1="0%" x2="0%" y2="100%">
+							<stop offset="0%" style="stop-color:rgba(200,90,90,0.18)"/>
+							<stop offset="100%" style="stop-color:rgba(20,24,36,0.75)"/>
+						</linearGradient>
+					</defs>
+					<text x="280" y="22" text-anchor="middle" fill="rgba(235,240,255,0.88)" font-size="13" font-family="system-ui,sans-serif">相手バトルゾーンにファイターがいるとき</text>
+					<rect x="32" y="40" width="200" height="100" rx="12" fill="url(#htpP1)" stroke="rgba(74,125,255,0.45)" stroke-width="1.5"/>
+					<text x="132" y="78" text-anchor="middle" fill="rgba(235,240,255,0.95)" font-size="14" font-family="system-ui,sans-serif">あなたのファイター</text>
+					<text x="132" y="102" text-anchor="middle" fill="rgba(180,200,255,0.85)" font-size="12" font-family="system-ui,sans-serif">効果適用後の強さ</text>
+					<text x="132" y="124" text-anchor="middle" fill="rgba(214,179,93,0.95)" font-size="13" font-weight="700" font-family="system-ui,sans-serif">A</text>
+					<rect x="328" y="40" width="200" height="100" rx="12" fill="url(#htpP2)" stroke="rgba(200,120,120,0.4)" stroke-width="1.5"/>
+					<text x="428" y="78" text-anchor="middle" fill="rgba(235,240,255,0.95)" font-size="14" font-family="system-ui,sans-serif">相手のファイター</text>
+					<text x="428" y="102" text-anchor="middle" fill="rgba(230,200,200,0.85)" font-size="12" font-family="system-ui,sans-serif">効果適用後の強さ</text>
+					<text x="428" y="124" text-anchor="middle" fill="rgba(214,179,93,0.95)" font-size="13" font-weight="700" font-family="system-ui,sans-serif">B</text>
+					<text x="280" y="168" text-anchor="middle" fill="rgba(214,179,93,0.95)" font-size="13" font-family="system-ui,sans-serif">配置するには A ≧ B が必要</text>
+				</svg>
+			</div>
+			<figcaption class="how-to-play__figcaption muted">図：強さの比較（イメージ）</figcaption>
+		</figure>
+
+		<h3 class="how-to-play__sub how-to-play__heading-gap-before">勝敗</h3>
+		<ul class="how-to-play__list">
+			<li>相手がファイターを出せない状態になったらあなたの勝ちです。あなたがカードを出せなくなったら、あなたの敗北です。</li>
+			<li>CPU戦では相手のレベル（強さ）を選べます。慣れたら「他のプレイヤーとバトル」で対人戦に挑めます。</li>
+		</ul>
+
+		<h3 class="how-to-play__sub how-to-play__heading-gap-before">ホームからできること</h3>
+		<ul class="how-to-play__list">
+			<li>カードパックを購入 … 新しいカードを入手</li>
+			<li>CPUとバトル … 練習・立ち回りの確認</li>
+			<li>他のプレイヤーとバトル … 対戦（部屋の作成・参加）</li>
+			<li>デッキを作成 … 所持カードから8枚を編成</li>
+			<li>ライブラリを見る … カードの種族・強さ・テキストを確認</li>
+			<li>ミッション … 条件を達成してジェムを獲得（デイリー・ウィークリー）</li>
+		</ul>
+	</section>
+</div>
+</body>
+</html>

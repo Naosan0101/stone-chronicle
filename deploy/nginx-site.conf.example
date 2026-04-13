@@ -1,12 +1,17 @@
 # /etc/nginx/sites-available/nine-universe に置き、sites-enabled へ symlink
-# certbot で SSL 取得後、listen 443 と ssl_* 行が追加されることが多い
+# certbot --nginx 実行後、listen 443 と ssl_* が追加される
 
 upstream nine_universe_app {
 	server 127.0.0.1:8080;
 }
 
 server {
+	listen 80;
+	listen [::]:80;
 	server_name nine-universe.jp www.nine-universe.jp;
+
+	client_max_body_size 20m;
+	proxy_read_timeout 120s;
 
 	location / {
 		proxy_pass http://nine_universe_app;

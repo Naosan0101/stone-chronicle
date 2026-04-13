@@ -14,6 +14,7 @@ RUN chmod +x gradlew \
 
 FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
+ENV SPRING_PROFILES_ACTIVE=production
 COPY --from=builder /opt/app.jar /app/app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
