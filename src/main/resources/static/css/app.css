@@ -146,18 +146,21 @@ body {
 	padding: 0 0 0.42em;
 }
 .game-title--brand .game-title__en {
-	display: inline-block;
+	display: block;
+	width: max-content;
+	max-width: 100%;
 	font-size: inherit;
 	font-weight: 600;
 	letter-spacing: 0.07em;
 	color: var(--accent);
 	text-shadow: 0 0 12px rgba(201, 162, 39, 0.35);
+	line-height: 1.15;
 }
 .game-title--brand .game-title__ja {
 	position: absolute;
 	right: 0;
 	bottom: 0;
-	font-size: 0.38em;
+	font-size: 0.42em;
 	font-weight: 500;
 	letter-spacing: 0.06em;
 	line-height: 1;
@@ -200,16 +203,22 @@ body {
 	font-weight: 600;
 	letter-spacing: 0.04em;
 }
+.topbar__announce-label {
+	position: relative;
+	display: inline-block;
+	padding-right: 0.2rem;
+}
 .topbar__announce-dot {
 	position: absolute;
-	top: 2px;
-	right: 2px;
-	width: 10px;
-	height: 10px;
+	top: -0.18rem;
+	right: -0.28rem;
+	width: 0.55rem;
+	height: 0.55rem;
 	border-radius: 50%;
-	background: #e11;
+	background: #e53935;
 	box-shadow: 0 0 0 2px rgba(15, 17, 24, 0.95);
 	pointer-events: none;
+	z-index: 1;
 }
 .topbar__announce--highlight {
 	box-shadow: 0 0 0 1px rgba(214, 179, 93, 0.55), 0 0 14px rgba(214, 179, 93, 0.22);
@@ -530,6 +539,26 @@ body {
 	background: rgba(0, 0, 0, 0.28);
 	text-align: left;
 }
+.announcement-modal__mailbox {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.75rem 1rem;
+}
+.announcement-modal__mailbox-body {
+	flex: 1 1 12rem;
+	min-width: 0;
+}
+.announcement-modal__mailbox-aside {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.45rem;
+	min-width: 7.5rem;
+	text-align: right;
+}
 .announcement-modal__card-body {
 	margin-bottom: 0.65rem;
 }
@@ -539,13 +568,8 @@ body {
 	line-height: 1.6;
 	color: var(--text);
 }
-.announcement-modal__card-actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.5rem 0.85rem;
-	padding-top: 0.65rem;
-	border-top: 1px solid rgba(255, 255, 255, 0.1);
+.announcement-modal__card-text + .announcement-modal__card-text {
+	margin-top: 0.4rem;
 }
 .announcement-modal__deadline {
 	font-size: 0.84rem;
@@ -554,16 +578,25 @@ body {
 }
 .announcement-modal__gem-form {
 	margin: 0;
-	margin-left: auto;
 }
 .announcement-modal__gem-btn {
 	min-width: 6.5rem;
 }
 .announcement-modal__card-status {
 	margin: 0;
-	width: 100%;
 	font-size: 0.9rem;
 	text-align: right;
+}
+@media (max-width: 420px) {
+	.announcement-modal__mailbox {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	.announcement-modal__mailbox-aside {
+		align-items: flex-start;
+		text-align: left;
+		width: 100%;
+	}
 }
 .announcement-modal__card-status.ok {
 	color: #a7ebc2;
@@ -623,6 +656,33 @@ body {
 	position: relative;
 	margin: 0.5rem 0 0.35rem;
 }
+.home-time-pack__ruler {
+	position: relative;
+	width: 100%;
+	min-height: 1.15rem;
+}
+.home-time-pack__ruler--labels {
+	margin-bottom: 0.35rem;
+}
+.home-time-pack__ruler--times {
+	margin-top: 0.35rem;
+	min-height: 1.35rem;
+}
+.home-time-pack__ruler-point {
+	position: absolute;
+	top: 0;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	max-width: 48%;
+}
+.home-time-pack__ruler-point--max {
+	transform: translateX(-100%);
+	align-items: flex-end;
+	text-align: right;
+	max-width: 48%;
+}
 .home-time-pack__track {
 	height: 14px;
 	border-radius: 999px;
@@ -637,28 +697,6 @@ body {
 	background: linear-gradient(90deg, rgba(74, 125, 255, 0.55), rgba(214, 179, 93, 0.85));
 	box-shadow: 0 0 14px rgba(214, 179, 93, 0.25);
 	transition: width 0.35s ease;
-}
-.home-time-pack__scale {
-	position: relative;
-	width: 100%;
-	min-height: 2.85rem;
-	margin-top: 0.4rem;
-}
-.home-time-pack__scale-point {
-	position: absolute;
-	top: 0;
-	transform: translateX(-50%);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 0.2rem;
-	max-width: 48%;
-}
-.home-time-pack__scale-point--max {
-	transform: translateX(-100%);
-	align-items: flex-end;
-	text-align: right;
-	max-width: 48%;
 }
 .home-time-pack__scale-label {
 	font-size: 0.72rem;
@@ -903,6 +941,11 @@ body {
 		0 0 26px rgba(74, 125, 255, 0.12),
 		0 18px 70px rgba(0, 0, 0, 0.28);
 }
+.tile__icon-wrap {
+	position: relative;
+	display: inline-flex;
+	margin-bottom: 0.15rem;
+}
 .tile__icon {
 	width: 2.25rem;
 	height: 2.25rem;
@@ -918,6 +961,20 @@ body {
 	letter-spacing: 0.02em;
 	margin-bottom: 0.15rem;
 }
+.tile__icon-wrap .tile__icon {
+	margin-bottom: 0;
+}
+.tile__icon--mono {
+	color: rgba(230, 232, 240, 0.92);
+}
+.tile__icon-svg {
+	display: block;
+	width: 1.35rem;
+	height: 1.35rem;
+}
+.tile__icon--mono .tile__icon-svg {
+	stroke: currentColor;
+}
 .tile__label { font-weight: 800; letter-spacing: 0.02em; }
 .tile__hint { font-size: 0.85rem; color: var(--muted); }
 /* ホーム：ミッションタイルに未受取バッジ */
@@ -926,10 +983,10 @@ body {
 }
 .tile__mission-dot {
 	position: absolute;
-	top: 0.55rem;
-	right: 0.55rem;
-	width: 0.65rem;
-	height: 0.65rem;
+	top: -0.15rem;
+	right: -0.15rem;
+	width: 0.58rem;
+	height: 0.58rem;
 	border-radius: 50%;
 	background: #e53935;
 	box-shadow: 0 0 0 2px rgba(10, 12, 18, 0.85);
@@ -1743,35 +1800,63 @@ a:hover {
 	border-radius: 9px;
 	box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38);
 }
-/* ライブラリ：デッキに入っているカードはカード面のみ緑枠（×Nは対象外） */
-.page--deck .mini-card--lib.mini-card--in-deck .card-face--mini-deck {
+/* ライブラリ：デッキ枚数に応じた枠（×Nは対象外）— 1枚=黄、2枚=赤 */
+.page--deck .mini-card--lib.mini-card--deck-1 .card-face--mini-deck {
 	border-radius: 9px;
 	box-shadow:
-		0 0 0 2px rgba(72, 210, 130, 0.95),
-		0 0 10px rgba(72, 210, 130, 0.35),
+		0 0 0 2px rgba(230, 200, 80, 0.98),
+		0 0 10px rgba(230, 200, 80, 0.28),
 		0 5px 18px rgba(0, 0, 0, 0.38);
 }
-.page--deck .mini-card--lib.mini-card--in-deck > img {
+.page--deck .mini-card--lib.mini-card--deck-1 > img {
 	border-radius: 9px;
 	box-shadow:
-		0 0 0 2px rgba(72, 210, 130, 0.95),
-		0 0 10px rgba(72, 210, 130, 0.35),
+		0 0 0 2px rgba(230, 200, 80, 0.98),
+		0 0 10px rgba(230, 200, 80, 0.28),
 		0 5px 18px rgba(0, 0, 0, 0.38);
 }
-.page--deck .mini-card--lib.mini-card--in-deck > .mini-card__no-art {
+.page--deck .mini-card--lib.mini-card--deck-1 > .mini-card__no-art {
 	border-radius: 9px;
 	box-shadow:
-		0 0 0 2px rgba(72, 210, 130, 0.95),
-		0 0 10px rgba(72, 210, 130, 0.35),
+		0 0 0 2px rgba(230, 200, 80, 0.98),
+		0 0 10px rgba(230, 200, 80, 0.28),
 		0 5px 18px rgba(0, 0, 0, 0.38);
 }
-.page--deck .mini-card--lib.mini-card--in-deck:focus-visible {
+.page--deck .mini-card--lib.mini-card--deck-2 .card-face--mini-deck {
+	border-radius: 9px;
+	box-shadow:
+		0 0 0 2px rgba(220, 72, 72, 0.98),
+		0 0 10px rgba(220, 72, 72, 0.32),
+		0 5px 18px rgba(0, 0, 0, 0.38);
+}
+.page--deck .mini-card--lib.mini-card--deck-2 > img {
+	border-radius: 9px;
+	box-shadow:
+		0 0 0 2px rgba(220, 72, 72, 0.98),
+		0 0 10px rgba(220, 72, 72, 0.32),
+		0 5px 18px rgba(0, 0, 0, 0.38);
+}
+.page--deck .mini-card--lib.mini-card--deck-2 > .mini-card__no-art {
+	border-radius: 9px;
+	box-shadow:
+		0 0 0 2px rgba(220, 72, 72, 0.98),
+		0 0 10px rgba(220, 72, 72, 0.32),
+		0 5px 18px rgba(0, 0, 0, 0.38);
+}
+.page--deck .mini-card--lib.mini-card--deck-1:focus-visible,
+.page--deck .mini-card--lib.mini-card--deck-2:focus-visible {
 	outline: none;
 }
-.page--deck .mini-card--lib.mini-card--in-deck:focus-visible .card-face--mini-deck,
-.page--deck .mini-card--lib.mini-card--in-deck:focus-visible > img,
-.page--deck .mini-card--lib.mini-card--in-deck:focus-visible > .mini-card__no-art {
-	outline: 2px solid rgba(120, 255, 180, 0.95);
+.page--deck .mini-card--lib.mini-card--deck-1:focus-visible .card-face--mini-deck,
+.page--deck .mini-card--lib.mini-card--deck-1:focus-visible > img,
+.page--deck .mini-card--lib.mini-card--deck-1:focus-visible > .mini-card__no-art {
+	outline: 2px solid rgba(255, 220, 120, 0.95);
+	outline-offset: 2px;
+}
+.page--deck .mini-card--lib.mini-card--deck-2:focus-visible .card-face--mini-deck,
+.page--deck .mini-card--lib.mini-card--deck-2:focus-visible > img,
+.page--deck .mini-card--lib.mini-card--deck-2:focus-visible > .mini-card__no-art {
+	outline: 2px solid rgba(255, 150, 150, 0.95);
 	outline-offset: 2px;
 }
 .page--deck .mini-card:focus-visible {

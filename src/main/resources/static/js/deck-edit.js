@@ -647,7 +647,10 @@
 			const inDeck = countInDeck(c.id);
 			const el = document.createElement('button');
 			el.type = 'button';
-			el.className = 'mini-card mini-card--lib' + (inDeck > 0 ? ' mini-card--in-deck' : '');
+			var deckCls = '';
+			if (inDeck === 1) deckCls = ' mini-card--deck-1';
+			else if (inDeck >= 2) deckCls = ' mini-card--deck-2';
+			el.className = 'mini-card mini-card--lib' + deckCls;
 			el.dataset.id = String(c.id);
 			const inDeckHint = inDeck > 0 ? '。デッキに' + inDeck + '枚使用中' : '';
 			el.setAttribute(
