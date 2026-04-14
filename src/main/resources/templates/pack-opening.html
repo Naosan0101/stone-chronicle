@@ -4,7 +4,7 @@
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>開封 — ナインユニバース</title>
-	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
 <body class="page page--pack-opening">
 <header class="topbar">
@@ -32,8 +32,8 @@
 	</div>
 </section>
 
-<script th:src="@{/js/card-spark.js}"></script>
-<script th:src="@{/js/pack-opening.js}"></script>
+<script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
+<script th:src="@{/js/pack-opening.js(v=${assetVersion})}"></script>
 </body>
 </html>
 

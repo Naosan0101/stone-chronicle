@@ -4,7 +4,7 @@
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>デッキ編集 — ナインユニバース</title>
-	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 	<meta name="nine_universe_context_path" th:content="${contextPath != null ? contextPath : ''}"/>
 	<meta name="card_plate_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardPlateUrl}|"/>
 	<meta name="card_data_fallback" th:content="|${contextPath != null ? contextPath : ''}${cardDataUrl}|"/>
@@ -189,8 +189,8 @@
 	</div>
 </div>
 
-<script th:src="@{/js/card-spark.js}"></script>
-<script th:src="@{/js/card-face-layer.js}"></script>
-<script th:src="@{/js/deck-edit.js}"></script>
+<script th:src="@{/js/card-spark.js(v=${assetVersion})}"></script>
+<script th:src="@{/js/card-face-layer.js(v=${assetVersion})}"></script>
+<script th:src="@{/js/deck-edit.js(v=${assetVersion})}"></script>
 </body>
 </html>

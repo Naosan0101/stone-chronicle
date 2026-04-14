@@ -3,8 +3,8 @@
 <head>
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<title>Nine Universe — ホーム</title>
-	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<title>Nine Universe ? ???</title>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
 <body class="page page--theme-arcane"
       th:attr="data-announce-epoch=${announcementUiEpoch},
@@ -22,13 +22,13 @@
 		        aria-controls="announcement-modal">
 			<span class="topbar__announce-label">
 				<span class="topbar__announce-dot" id="announcement-unread-dot" hidden aria-hidden="true"></span>
-				お知らせ
+				????
 			</span>
 		</button>
-		<span>ジェム: <strong th:text="${user.coins}">0</strong></span>
+		<span>???: <strong th:text="${user.coins}">0</strong></span>
 		<form th:action="@{/logout}" method="post" class="inline">
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-			<button type="submit" class="btn btn--ghost">ゲームをやめる（ログアウト）</button>
+			<button type="submit" class="btn btn--ghost">??????????????</button>
 		</form>
 	</div>
 </header>
@@ -41,27 +41,27 @@
      aria-labelledby="announcement-modal-title"
      aria-hidden="true">
 	<div class="announcement-modal__panel" role="document">
-		<h2 id="announcement-modal-title" class="announcement-modal__heading">お知らせ</h2>
+		<h2 id="announcement-modal-title" class="announcement-modal__heading">????</h2>
 
 		<article class="announcement-modal__card"
 		         th:if="${announcementListPerfLight and (perfLightAnnouncementClaimable or perfLightAnnouncementClaimed or perfLightAnnouncementExpiredUnclaimed or perfLightAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
-					<p class="announcement-modal__card-text">「お知らせ」の追加、処理動作の軽量化をしました。</p>
+					<p class="announcement-modal__card-text">????????????????????????</p>
 				</div>
 				<aside class="announcement-modal__mailbox-aside">
-					<span th:if="${perfLightAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<span th:if="${perfLightAnnouncementClaimable}" class="announcement-modal__deadline">?????? 30?</span>
 					<form th:if="${perfLightAnnouncementClaimable}"
 					      th:action="@{/home/announcements/perf-light/claim}"
 					      method="post"
 					      class="announcement-modal__gem-form">
 						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
-						        th:text="|${perfLightAnnouncementGemAmount}ジェム|">10ジェム</button>
+						        th:text="|${perfLightAnnouncementGemAmount}???|">10???</button>
 					</form>
-					<p th:if="${perfLightAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
-					<p th:if="${perfLightAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
-					<p th:if="${perfLightAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+					<p th:if="${perfLightAnnouncementClaimed}" class="announcement-modal__card-status ok">??????</p>
+					<p th:if="${perfLightAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">????????????</p>
+					<p th:if="${perfLightAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">?????????</p>
 				</aside>
 			</div>
 		</article>
@@ -70,21 +70,21 @@
 		         th:if="${announcementListTimePack and (timePackAnnouncementClaimable or timePackAnnouncementClaimed or timePackAnnouncementExpiredUnclaimed or timePackAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
-					<p class="announcement-modal__card-text">時間でパック開封を実装しました。</p>
+					<p class="announcement-modal__card-text">????????????????</p>
 				</div>
 				<aside class="announcement-modal__mailbox-aside">
-					<span th:if="${timePackAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<span th:if="${timePackAnnouncementClaimable}" class="announcement-modal__deadline">?????? 30?</span>
 					<form th:if="${timePackAnnouncementClaimable}"
 					      th:action="@{/home/announcements/time-pack/claim}"
 					      method="post"
 					      class="announcement-modal__gem-form">
 						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
-						        th:text="|${timePackAnnouncementGemAmount}ジェム|">10ジェム</button>
+						        th:text="|${timePackAnnouncementGemAmount}???|">10???</button>
 					</form>
-					<p th:if="${timePackAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
-					<p th:if="${timePackAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
-					<p th:if="${timePackAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+					<p th:if="${timePackAnnouncementClaimed}" class="announcement-modal__card-status ok">??????</p>
+					<p th:if="${timePackAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">????????????</p>
+					<p th:if="${timePackAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">?????????</p>
 				</aside>
 			</div>
 		</article>
@@ -93,28 +93,28 @@
 		         th:if="${announcementListBalanceUiMission and (balanceUiMissionAnnouncementClaimable or balanceUiMissionAnnouncementClaimed or balanceUiMissionAnnouncementExpiredUnclaimed or balanceUiMissionAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
-					<p class="announcement-modal__card-text">・UI・ミッションの見直しをしました。</p>
-					<p class="announcement-modal__card-text">・「科学者」「ピクシー」「風の魔人」「ダークドラゴン」のバランスを調整しました。</p>
+					<p class="announcement-modal__card-text">?UI????????????????</p>
+					<p class="announcement-modal__card-text">????????????????????????????????????????</p>
 				</div>
 				<aside class="announcement-modal__mailbox-aside">
-					<span th:if="${balanceUiMissionAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<span th:if="${balanceUiMissionAnnouncementClaimable}" class="announcement-modal__deadline">?????? 30?</span>
 					<form th:if="${balanceUiMissionAnnouncementClaimable}"
 					      th:action="@{/home/announcements/balance-ui-mission/claim}"
 					      method="post"
 					      class="announcement-modal__gem-form">
 						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
-						        th:text="|${balanceUiMissionAnnouncementGemAmount}ジェム|">10ジェム</button>
+						        th:text="|${balanceUiMissionAnnouncementGemAmount}???|">10???</button>
 					</form>
-					<p th:if="${balanceUiMissionAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
-					<p th:if="${balanceUiMissionAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
-					<p th:if="${balanceUiMissionAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+					<p th:if="${balanceUiMissionAnnouncementClaimed}" class="announcement-modal__card-status ok">??????</p>
+					<p th:if="${balanceUiMissionAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">????????????</p>
+					<p th:if="${balanceUiMissionAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">?????????</p>
 				</aside>
 			</div>
 		</article>
-		<p th:if="${flashAnnouncementSuccess}" class="announcement-modal__flash ok" th:text="${flashAnnouncementSuccess}">受け取りました。</p>
-		<p th:if="${flashAnnouncementError}" class="announcement-modal__flash err" th:text="${flashAnnouncementError}">エラー</p>
-		<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">閉じる</button>
+		<p th:if="${flashAnnouncementSuccess}" class="announcement-modal__flash ok" th:text="${flashAnnouncementSuccess}">????????</p>
+		<p th:if="${flashAnnouncementError}" class="announcement-modal__flash err" th:text="${flashAnnouncementError}">???</p>
+		<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">???</button>
 	</div>
 </div>
 
@@ -125,10 +125,10 @@
      aria-modal="true"
      aria-labelledby="welcome-bonus-title">
 	<div class="welcome-bonus-modal__panel">
-		<h2 id="welcome-bonus-title" class="welcome-bonus-modal__heading">新規ユーザープレゼント！</h2>
+		<h2 id="welcome-bonus-title" class="welcome-bonus-modal__heading">????????????</h2>
 		<p class="welcome-bonus-modal__text"
-		   th:text="|${welcomeHomeBonusAmount}ジェムを付与しました。|">30ジェムを付与しました。</p>
-		<button type="button" class="btn btn--primary welcome-bonus-modal__close" id="welcome-bonus-close">閉じる</button>
+		   th:text="|${welcomeHomeBonusAmount}???????????|">30???????????</p>
+		<button type="button" class="btn btn--primary welcome-bonus-modal__close" id="welcome-bonus-close">???</button>
 	</div>
 </div>
 
@@ -136,8 +136,8 @@
 	<section class="home-time-pack"
 	         th:attr="data-duration-ms=${timePackDurationMs},data-start-ms=${timePackCycleStartEpochMs}">
 		<div class="home-time-pack__head">
-			<h2 class="home-time-pack__title">ボーナスパック</h2>
-			<p class="home-time-pack__lead">12時間でゲージがMAX。半分で1パック、MAXでさらに1パック開封できます（開封するとゲージはリセット）。</p>
+			<h2 class="home-time-pack__title">???????</h2>
+			<p class="home-time-pack__lead">12???????MAX????1????MAX????1?????????????????????????</p>
 		</div>
 		<div class="home-time-pack__bar-wrap" aria-hidden="true">
 			<div class="home-time-pack__ruler home-time-pack__ruler--labels">
@@ -155,17 +155,17 @@
 			</div>
 			<div class="home-time-pack__ruler home-time-pack__ruler--times">
 				<div class="home-time-pack__ruler-point" style="left:50%">
-					<span class="home-time-pack__cd" id="time-pack-cd-half">0時間0分0秒</span>
+					<span class="home-time-pack__cd" id="time-pack-cd-half">0??0?0?</span>
 				</div>
 				<div class="home-time-pack__ruler-point home-time-pack__ruler-point--max" style="left:100%">
-					<span class="home-time-pack__cd" id="time-pack-cd-max">0時間0分0秒</span>
+					<span class="home-time-pack__cd" id="time-pack-cd-max">0??0?0?</span>
 				</div>
 			</div>
 		</div>
 		<p class="home-time-pack__status" id="time-pack-status">
-			<span th:if="${timePackAvailablePacks == 0}">ゲージが半分に達すると開封できます。</span>
-			<span th:if="${timePackAvailablePacks == 1}">スタンダードパックを <strong>1パック</strong> 開封できます。</span>
-			<span th:if="${timePackAvailablePacks == 2}">スタンダードパックを <strong>2パック</strong> まとめて開封できます。</span>
+			<span th:if="${timePackAvailablePacks == 0}">??????????????????</span>
+			<span th:if="${timePackAvailablePacks == 1}">?????????? <strong>1???</strong> ???????</span>
+			<span th:if="${timePackAvailablePacks == 2}">?????????? <strong>2???</strong> ???????????</span>
 		</p>
 		<form th:action="@{/home/time-pack/open}" method="post" class="home-time-pack__form">
 			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -173,87 +173,87 @@
 			        class="btn btn--primary home-time-pack__btn"
 			        id="time-pack-open-btn"
 			        th:disabled="${timePackAvailablePacks == 0}"
-			        th:text="${timePackAvailablePacks == 2} ? 'スタンダードを2パック開封' : (${timePackAvailablePacks == 1} ? 'スタンダードを1パック開封' : '開封できるまで待機中')">
-				開封できるまで待機中
+			        th:text="${timePackAvailablePacks == 2} ? '???????2?????' : (${timePackAvailablePacks == 1} ? '???????1?????' : '??????????')">
+				??????????
 			</button>
 		</form>
-		<p th:if="${flashTimePackError}" class="home-time-pack__err" th:text="${flashTimePackError}">エラー</p>
+		<p th:if="${flashTimePackError}" class="home-time-pack__err" th:text="${flashTimePackError}">???</p>
 	</section>
 
-	<section class="home-hero" aria-label="メインメニュー">
+	<section class="home-hero" aria-label="???????">
 		<div class="home-hero__bg" aria-hidden="true"></div>
 		<div class="home-hero__body">
 			<div class="home-hero__stats">
-				<div class="stat-pill" role="status" aria-label="所持ジェム">
-					<span class="stat-pill__label">ジェム</span>
+				<div class="stat-pill" role="status" aria-label="?????">
+					<span class="stat-pill__label">???</span>
 					<span class="stat-pill__value" th:text="${user.coins}">0</span>
 				</div>
-				<a class="btn btn--primary home-hero__cta" th:href="@{/pack}">パック購入へ</a>
-				<a class="btn btn--ghost home-hero__cta" th:href="@{/decks}">デッキ編集</a>
+				<a class="btn btn--primary home-hero__cta" th:href="@{/pack}">??????</a>
+				<a class="btn btn--ghost home-hero__cta" th:href="@{/decks}">?????</a>
 			</div>
 		</div>
 	</section>
 
-	<main class="home-grid" aria-label="メニュー">
+	<main class="home-grid" aria-label="????">
 		<a class="tile tile--featured" th:href="@{/pack}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="16" rx="1"/><rect x="8" y="3" width="12" height="16" rx="1"/></svg></span>
-			<span class="tile__label">カードパックを購入</span>
-			<span class="tile__hint">新たなファイターを仲間に</span>
+			<span class="tile__label">?????????</span>
+			<span class="tile__hint">????????????</span>
 		</a>
 		<a class="tile" th:href="@{/battle/cpu}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M7 5l10 14M17 5L7 19"/></svg></span>
-			<span class="tile__label">ひとりで対戦</span>
-			<span class="tile__hint">CPUとバトル</span>
+			<span class="tile__label">??????</span>
+			<span class="tile__hint">CPU????</span>
 		</a>
 		<a class="tile" th:href="@{/battle/pvp}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 5v8l-8 5-8-5V8l8-5z"/><line x1="12" y1="8" x2="12" y2="21"/></svg></span>
-			<span class="tile__label">だれかと対戦</span>
-			<span class="tile__hint">対人戦で腕試し</span>
+			<span class="tile__label">??????</span>
+			<span class="tile__hint">???????</span>
 		</a>
 		<a class="tile" th:href="@{/decks}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="8" height="5" rx="0.8"/><rect x="3" y="12" width="8" height="7" rx="0.8"/><rect x="13" y="5" width="8" height="14" rx="0.8"/></svg></span>
-			<span class="tile__label">デッキを作成</span>
-			<span class="tile__hint">バトルの準備</span>
+			<span class="tile__label">??????</span>
+			<span class="tile__hint">??????</span>
 		</a>
 		<a class="tile" th:href="@{/library}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/></svg></span>
-			<span class="tile__label">ライブラリ</span>
-			<span class="tile__hint">すべてのカードを確認</span>
+			<span class="tile__label">?????</span>
+			<span class="tile__hint">??????????</span>
 		</a>
 		<a class="tile tile--mission-tile" th:href="@{/missions}">
 			<span class="tile__icon-wrap">
 				<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
 				<span class="tile__mission-dot" th:if="${missionHasUnclaimedReward}" aria-hidden="true"></span>
 			</span>
-			<span class="tile__label">ミッション</span>
-			<span class="tile__hint">ジェムを獲得</span>
+			<span class="tile__label">?????</span>
+			<span class="tile__hint">??????</span>
 		</a>
 		<a class="tile" th:href="@{/how-to-play}">
 			<span class="tile__icon tile__icon--mono" aria-hidden="true"><svg class="tile__icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7a3 3 0 013 3v13H9a3 3 0 01-3-3V4z"/><path d="M9 4v13h7"/></svg></span>
-			<span class="tile__label">遊び方</span>
-			<span class="tile__hint">ルールを確認</span>
+			<span class="tile__label">???</span>
+			<span class="tile__hint">??????</span>
 		</a>
 	</main>
 
 	<section class="panel" th:if="${missions != null && !missions.isEmpty()}">
-		<h2>今日のミッション</h2>
+		<h2>????????</h2>
 		<ul class="mission-mini">
 			<li th:each="m : ${missions}">
-				<span th:text="${m.title}">—</span>
-				— <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span>
-				<span class="mission-mini__check" th:if="${m.progress != null and m.targetCount != null and m.progress >= m.targetCount}" title="達成">✓</span>
+				<span th:text="${m.title}">?</span>
+				? <span th:text="${m.progress}">0</span> / <span th:text="${m.targetCount}">0</span>
+				<span class="mission-mini__check" th:if="${m.progress != null and m.targetCount != null and m.progress >= m.targetCount}" title="??">?</span>
 			</li>
 		</ul>
 	</section>
 
 	<section class="panel" th:if="${weeklyMissions != null && !weeklyMissions.isEmpty()}">
-		<h2>今週のミッション</h2>
-		<p class="muted home-weekly-mission__hint">月曜更新・各10ジェム</p>
+		<h2>????????</h2>
+		<p class="muted home-weekly-mission__hint">??????10???</p>
 		<ul class="mission-mini">
 			<li th:each="w : ${weeklyMissions}">
-				<span th:text="${w.title}">—</span>
-				— <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span>
-				<span class="mission-mini__check" th:if="${w.progress != null and w.targetCount != null and w.progress >= w.targetCount}" title="達成">✓</span>
+				<span th:text="${w.title}">?</span>
+				? <span th:text="${w.progress}">0</span> / <span th:text="${w.targetCount}">0</span>
+				<span class="mission-mini__check" th:if="${w.progress != null and w.targetCount != null and w.progress >= w.targetCount}" title="??">?</span>
 			</li>
 		</ul>
 	</section>
@@ -306,7 +306,7 @@
 	document.addEventListener('keydown', function (e) {
 		if (e.key === 'Escape' && !ann.hidden) closeAnn();
 	});
-	/* 受け取り直後のフラッシュメッセージがあるときは自動で開く */
+	/* ???????????????????????????? */
 	if (document.querySelector('.announcement-modal__flash')) {
 		openAnn();
 	}
@@ -349,12 +349,12 @@
 	var start = parseInt(root.getAttribute('data-start-ms'), 10);
 	if (!dur || isNaN(start)) return;
 	function fmtHms(ms) {
-		if (ms <= 0) return '0時間0分0秒';
+		if (ms <= 0) return '0??0?0?';
 		var s = Math.floor(ms / 1000);
 		var h = Math.floor(s / 3600);
 		var m = Math.floor((s % 3600) / 60);
 		var sec = s % 60;
-		return h + '時間' + m + '分' + sec + '秒';
+		return h + '??' + m + '?' + sec + '?';
 	}
 	function tick() {
 		var elapsed = Date.now() - start;
@@ -371,22 +371,22 @@
 		if (ratio < 0.5) {
 			cdHalf.textContent = fmtHms(toHalf);
 		} else {
-			cdHalf.textContent = '0時間0分0秒';
+			cdHalf.textContent = '0??0?0?';
 		}
 		if (ratio < 1) {
 			cdMax.textContent = fmtHms(toMax);
 		} else {
-			cdMax.textContent = '0時間0分0秒';
+			cdMax.textContent = '0??0?0?';
 		}
 		if (packs === 2) {
-			btn.textContent = 'スタンダードを2パック開封';
-			statusEl.innerHTML = 'スタンダードパックを <strong>2パック</strong> まとめて開封できます。';
+			btn.textContent = '???????2?????';
+			statusEl.innerHTML = '?????????? <strong>2???</strong> ???????????';
 		} else if (packs === 1) {
-			btn.textContent = 'スタンダードを1パック開封';
-			statusEl.innerHTML = 'スタンダードパックを <strong>1パック</strong> 開封できます。';
+			btn.textContent = '???????1?????';
+			statusEl.innerHTML = '?????????? <strong>1???</strong> ???????';
 		} else {
-			btn.textContent = '開封できるまで待機中';
-			statusEl.textContent = 'ゲージが半分に達すると開封できます。';
+			btn.textContent = '??????????';
+			statusEl.textContent = '??????????????????';
 		}
 	}
 	tick();

@@ -42,3 +42,8 @@ tasks.named('test') {
 tasks.named('bootJar') {
 	archiveFileName = 'nine-universe.jar'
 }
+
+/* bootJar に META-INF/build-info.properties を同梱し、ビルドごとに assetVersion が変わるようにする（CSS/JS キャッシュ対策） */
+springBoot {
+	buildInfo()
+}

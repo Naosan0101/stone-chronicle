@@ -4,7 +4,7 @@
 	<meta charset="UTF-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>カードパック購入 — ナインユニバース</title>
-	<link rel="stylesheet" th:href="@{/css/app.css}"/>
+	<link rel="stylesheet" th:href="@{/css/app.css(v=${assetVersion})}"/>
 </head>
 <body class="page page--pack">
 <header class="topbar">
@@ -142,6 +142,6 @@
 	</div>
 </div>
 
-<script th:src="@{/js/pack-buy.js}"></script>
+<script th:src="@{/js/pack-buy.js(v=${assetVersion})}"></script>
 </body>
 </html>
