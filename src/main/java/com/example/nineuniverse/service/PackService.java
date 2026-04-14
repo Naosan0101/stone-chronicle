@@ -50,6 +50,18 @@ public class PackService {
 			throw new IllegalArgumentException("ジェムが足りません（" + t.cost + "ジェム必要）");
 		}
 		appUserMapper.updateCoins(userId, u.getCoins() - t.cost);
+		return pullPackIntoCollection(userId, t);
+	}
+
+	/**
+	 * ホームの時間ゲージなど：ジェムを消費せず、スタンダードと同じ排出で開封する。
+	 */
+	@Transactional
+	public List<CardDefinition> openStandardPackWithoutGemCost(long userId) {
+		return pullPackIntoCollection(userId, PackType.STANDARD);
+	}
+
+	private List<CardDefinition> pullPackIntoCollection(long userId, PackType t) {
 		Random rnd = new Random();
 		List<CardDefinition> pulled = new ArrayList<>();
 		List<CardDefinition> all = filterCardsForPack(cardCatalogService.all(), t);

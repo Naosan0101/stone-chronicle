@@ -1,6 +1,7 @@
 package com.example.nineuniverse.repository;
 
 import com.example.nineuniverse.domain.AppUser;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.Options;
@@ -16,6 +17,9 @@ public interface AppUserMapper {
 
 	int updateCoins(@Param("id") long id, @Param("coins") int coins);
 
+	/** {@code coins} に {@code delta} を加算する（報酬付与など）。 */
+	int addCoinsDelta(@Param("id") long id, @Param("delta") int delta);
+
 	/**
 	 * {@code welcome_home_bonus_granted = false} のときだけ {@code amount} を加算し true にする。競合時は 0 行。
 	 */
@@ -25,5 +29,5 @@ public interface AppUserMapper {
 
 	int updateLastAccessAt(@Param("id") long id, @Param("at") LocalDateTime at);
 
-	int deleteUsersWithLastAccessBefore(@Param("before") LocalDateTime before);
+	int updateTimePackCycleStart(@Param("id") long id, @Param("at") Instant at);
 }

@@ -25,24 +25,27 @@ public class LastAccessUpdateFilter extends OncePerRequestFilter {
 
 	private final AppUserMapper appUserMapper;
 
-	@Value("${app.inactive-user.last-access-db-interval-minutes:15}")
+	@Value("${app.last-access.db-interval-minutes:15}")
 	private int dbIntervalMinutes;
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		try {
-			var auth = SecurityContextHolder.getContext().getAuthentication();
-			if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof AccountUserDetails d) {
-				Long uid = d.getUser().getId();
-				if (uid != null && shouldPersistToDb(request.getSession(false))) {
-					appUserMapper.updateLastAccessAt(uid, LocalDateTime.now());
+			filterChain.doFilter(request, response);
+		} finally {
+			try {
+				var auth = SecurityContextHolder.getContext().getAuthentication();
+				if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof AccountUserDetails d) {
+					Long uid = d.getUser().getId();
+					if (uid != null && shouldPersistToDb(request.getSession(false))) {
+						appUserMapper.updateLastAccessAt(uid, LocalDateTime.now());
+					}
 				}
+			} catch (Exception ignored) {
+				// アクセス記録の失敗でレスポンスを壊さない
 			}
-		} catch (Exception ignored) {
-			// アクセス記録の失敗でリクエスト全体を落とさない
 		}
-		filterChain.doFilter(request, response);
 	}
 
 	private boolean shouldPersistToDb(HttpSession session) {

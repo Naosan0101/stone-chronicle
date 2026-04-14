@@ -6,7 +6,8 @@
 		SELECT id, username, password_hash AS passwordHash, coins,
 		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
 		       last_mission_date AS lastMissionDate, created_at AS createdAt,
-		       last_access_at AS lastAccessAt
+		       last_access_at AS lastAccessAt,
+		       time_pack_cycle_start AS timePackCycleStart
 		FROM app_user WHERE username = #{username}
 	</select>
 
@@ -14,7 +15,8 @@
 		SELECT id, username, password_hash AS passwordHash, coins,
 		       welcome_home_bonus_granted AS welcomeHomeBonusGranted,
 		       last_mission_date AS lastMissionDate, created_at AS createdAt,
-		       last_access_at AS lastAccessAt
+		       last_access_at AS lastAccessAt,
+		       time_pack_cycle_start AS timePackCycleStart
 		FROM app_user WHERE id = #{id}
 	</select>
 
@@ -25,6 +27,10 @@
 
 	<update id="updateCoins">
 		UPDATE app_user SET coins = #{coins} WHERE id = #{id}
+	</update>
+
+	<update id="addCoinsDelta">
+		UPDATE app_user SET coins = COALESCE(coins, 0) + #{delta} WHERE id = #{id}
 	</update>
 
 	<update id="grantWelcomeHomeBonusIfPending">
@@ -42,7 +48,7 @@
 		UPDATE app_user SET last_access_at = #{at} WHERE id = #{id}
 	</update>
 
-	<delete id="deleteUsersWithLastAccessBefore">
-		DELETE FROM app_user WHERE last_access_at &lt; #{before}
-	</delete>
+	<update id="updateTimePackCycleStart">
+		UPDATE app_user SET time_pack_cycle_start = #{at} WHERE id = #{id}
+	</update>
 </mapper>

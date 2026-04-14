@@ -44,11 +44,16 @@ public class PackController {
 
 	private static final String CARD_BACK_CLASSPATH = "static/images/cards/card-back.PNG";
 
+	/** 起動時に一度だけ算出（JAR 内リソースの lastModified 走査をリクエスト毎に繰り返さない） */
+	private static final long PACK_ART_CACHE_KEY = computePackArtCacheKey();
+
+	private static final long CARD_BACK_CACHE_KEY = computeCardBackCacheKey();
+
 	@GetMapping
 	public String page(Model model) {
 		long uid = CurrentUser.require().getId();
 		var fresh = appUserMapper.findById(uid);
-		model.addAttribute("packArtCacheKey", packArtCacheKey());
+		model.addAttribute("packArtCacheKey", PACK_ART_CACHE_KEY);
 		model.addAttribute("standardPackImage", GameConstants.packArtImageUrl("スタンダードパック.PNG"));
 		model.addAttribute("windyHillPackImage", GameConstants.packArtImageUrl("風吹く丘パック.PNG"));
 		model.addAttribute("evilThreatPackImage", GameConstants.packArtImageUrl("邪悪なる脅威パック.PNG"));
@@ -61,7 +66,7 @@ public class PackController {
 	}
 
 	/** 画像差し替え後もブラウザキャッシュで古い絵が残らないよう、最新の lastModified をクエリに付ける。 */
-	private static long packArtCacheKey() {
+	private static long computePackArtCacheKey() {
 		long max = 0L;
 		for (String path : PACK_ART_CLASSPATH_FILES) {
 			var r = new ClassPathResource(path);
@@ -77,7 +82,7 @@ public class PackController {
 		return max;
 	}
 
-	private static long cardBackCacheKey() {
+	private static long computeCardBackCacheKey() {
 		var r = new ClassPathResource(CARD_BACK_CLASSPATH);
 		if (!r.exists()) {
 			return 0L;
@@ -151,7 +156,7 @@ public class PackController {
 		var fresh = appUserMapper.findById(uid);
 		model.addAttribute("gems", fresh != null && fresh.getCoins() != null ? fresh.getCoins() : 0);
 		model.addAttribute("cardBackUrl", GameConstants.cardBackUrl());
-		model.addAttribute("cardBackCacheKey", cardBackCacheKey());
+		model.addAttribute("cardBackCacheKey", CARD_BACK_CACHE_KEY);
 		Object idsObj = session.getAttribute("pack_last_pulled_ids");
 		List<Short> ids = coerceIds(idsObj);
 		if (ids.isEmpty()) {

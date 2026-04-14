@@ -2,6 +2,7 @@ package com.example.nineuniverse;
 
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.time.LocalDate;
 import java.util.Locale;
 import org.springframework.web.util.UriUtils;
 
@@ -137,6 +138,33 @@ public final class GameConstants {
 
 	/** ウィークリーミッション1件あたり（デイリーの約2倍） */
 	public static final int MISSION_WEEKLY_REWARD_COINS = 6;
+
+	/** お知らせ配布（処理軽量化リリース記念）の識別子。 */
+	public static final String ANNOUNCEMENT_PERF_LIGHT_KEY = "perf_light_2026_04";
+
+	public static final int ANNOUNCEMENT_PERF_LIGHT_GEMS = 10;
+
+	/** 受け取り開始日（この日を含む）。 */
+	public static final LocalDate ANNOUNCEMENT_PERF_LIGHT_START = LocalDate.of(2026, 4, 14);
+
+	/**
+	 * 受け取り終了日（この日を含む）。開始日から 30 日間。
+	 */
+	public static final LocalDate ANNOUNCEMENT_PERF_LIGHT_LAST_DAY =
+			ANNOUNCEMENT_PERF_LIGHT_START.plusDays(30 - 1);
+
+	/** お知らせ配布（時間パックゲージ実装のお知らせ） */
+	public static final String ANNOUNCEMENT_TIME_PACK_KEY = "time_pack_gauge_2026_04";
+
+	public static final int ANNOUNCEMENT_TIME_PACK_GEMS = 10;
+
+	public static final LocalDate ANNOUNCEMENT_TIME_PACK_START = LocalDate.of(2026, 4, 14);
+
+	public static final LocalDate ANNOUNCEMENT_TIME_PACK_LAST_DAY =
+			ANNOUNCEMENT_TIME_PACK_START.plusDays(30 - 1);
+
+	/** ホームの無料スタンダードパック用ゲージが MAX になるまでの時間（ミリ秒） */
+	public static final long TIME_PACK_CYCLE_DURATION_MS = 12L * 60 * 60 * 1000;
 
 	private GameConstants() {
 	}

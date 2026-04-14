@@ -1,5 +1,6 @@
 package com.example.nineuniverse.domain;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -14,6 +15,9 @@ public class AppUser {
 	private Boolean welcomeHomeBonusGranted;
 	private LocalDate lastMissionDate;
 	private LocalDateTime createdAt;
-	/** 最終アクセス（未アカウント削除の判定用） */
+	/** 最終アクセス時刻 */
 	private LocalDateTime lastAccessAt;
+
+	/** 無料スタンダードパック用ゲージのサイクル開始（この時刻から12時間でMAX） */
+	private Instant timePackCycleStart;
 }

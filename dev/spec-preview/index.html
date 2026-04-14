@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>仕様プレビュー（静的）— ナインユニバース</title>
+	<link rel="stylesheet" href="../../src/main/resources/static/css/app.css"/>
+	<style>
+		.spec-preview {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 1rem 1.25rem 3rem;
+		}
+		.spec-preview__intro {
+			margin-bottom: 1.25rem;
+		}
+		.spec-preview__intro p {
+			margin: 0.35rem 0;
+			line-height: 1.5;
+		}
+		.spec-preview__toolbar {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.75rem;
+			align-items: center;
+			margin-bottom: 1.25rem;
+		}
+		.spec-preview__toolbar label {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+		.spec-preview__filter {
+			min-width: 12rem;
+			flex: 1;
+			max-width: 24rem;
+			padding: 0.4rem 0.6rem;
+		}
+		.spec-preview__grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+			gap: 1.5rem;
+			align-items: start;
+		}
+		.spec-preview__cell {
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			border-radius: 8px;
+			padding: 0.75rem;
+			background: rgba(0, 0, 0, 0.15);
+		}
+		.spec-preview__caption {
+			font-size: 0.85rem;
+			margin: 0 0 0.5rem;
+		}
+		.spec-preview__line {
+			font-size: 0.7rem;
+			line-height: 1.35;
+			white-space: pre-wrap;
+			word-break: break-word;
+			margin: 0.75rem 0 0;
+			padding: 0.5rem;
+			background: rgba(0, 0, 0, 0.25);
+			border-radius: 4px;
+			max-height: 8rem;
+			overflow: auto;
+		}
+	</style>
+</head>
+<body class="page page--theme-arcane">
+<div class="spec-preview">
+	<header class="spec-preview__intro">
+		<h1 class="game-title">カード仕様プレビュー（サーバー不要）</h1>
+		<p class="muted">
+			<code>dev/spec-preview/spec-data.js</code> の <code>canonicalLines</code>（必要なら <code>attributeById</code>）を編集して保存し、このページをリロードすると反映されます。
+		</p>
+		<p class="muted">
+			本番へ取り込むときは <code>CanonicalLibraryCardText.java</code> などアプリ側の定義と揃えてください。
+		</p>
+	</header>
+	<div class="spec-preview__toolbar">
+		<label>
+			<span class="muted">絞り込み</span>
+			<input id="filter" class="spec-preview__filter" type="search" placeholder="名前・本文・種族コード…" autocomplete="off"/>
+		</label>
+	</div>
+	<div id="card-grid" class="spec-preview__grid" aria-live="polite"></div>
+</div>
+<script src="spec-data.js"></script>
+<script src="preview.js"></script>
+</body>
+</html>
