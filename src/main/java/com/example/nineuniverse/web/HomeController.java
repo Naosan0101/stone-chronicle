@@ -55,6 +55,12 @@ public class HomeController {
 		boolean listCardTextFix = GameConstants.shouldListAnnouncementForUser(
 				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
 				GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_START);
+		boolean listSamuraiFix = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_SAMURAI_FIX_START);
+		boolean listPackMissionBonusFix = GameConstants.shouldListAnnouncementForUser(
+				today, userForAnnouncements != null ? userForAnnouncements.getCreatedAt() : null, zone,
+				GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START);
 		model.addAttribute("announcementListPerfLight", listPerfLight);
 		model.addAttribute("announcementListTimePack", listTimePack);
 		model.addAttribute("announcementListBalanceUiMission", listBalanceUi);
@@ -63,6 +69,8 @@ public class HomeController {
 		model.addAttribute("announcementListCaptainText", listCaptainText);
 		model.addAttribute("announcementListMissionFix", listMissionFix);
 		model.addAttribute("announcementListCardTextFix", listCardTextFix);
+		model.addAttribute("announcementListSamuraiFix", listSamuraiFix);
+		model.addAttribute("announcementListPackMissionBonusFix", listPackMissionBonusFix);
 
 		boolean perfClaimed = announcementRewardService.hasClaimedPerfLight(uid);
 		boolean perfInWindow = announcementRewardService.isWithinPerfLightWindow(today);
@@ -148,6 +156,29 @@ public class HomeController {
 		model.addAttribute("cardTextFixAnnouncementFutureUnclaimed",
 				!cardTextFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_START));
 		model.addAttribute("cardTextFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_GEMS);
+
+		boolean samuraiFixAnnClaimed = announcementRewardService.hasClaimedSamuraiFixAnnouncement(uid);
+		boolean samuraiFixAnnInWindow = announcementRewardService.isWithinSamuraiFixAnnouncementWindow(today);
+		model.addAttribute("samuraiFixAnnouncementClaimed", samuraiFixAnnClaimed);
+		model.addAttribute("samuraiFixAnnouncementClaimable", samuraiFixAnnInWindow && !samuraiFixAnnClaimed);
+		model.addAttribute("samuraiFixAnnouncementExpiredUnclaimed",
+				!samuraiFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_SAMURAI_FIX_LAST_DAY));
+		model.addAttribute("samuraiFixAnnouncementFutureUnclaimed",
+				!samuraiFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_SAMURAI_FIX_START));
+		model.addAttribute("samuraiFixAnnouncementGemAmount", GameConstants.ANNOUNCEMENT_SAMURAI_FIX_GEMS);
+
+		boolean packMissionBonusFixAnnClaimed = announcementRewardService.hasClaimedPackMissionBonusFixAnnouncement(uid);
+		boolean packMissionBonusFixAnnInWindow =
+				announcementRewardService.isWithinPackMissionBonusFixAnnouncementWindow(today);
+		model.addAttribute("packMissionBonusFixAnnouncementClaimed", packMissionBonusFixAnnClaimed);
+		model.addAttribute("packMissionBonusFixAnnouncementClaimable",
+				packMissionBonusFixAnnInWindow && !packMissionBonusFixAnnClaimed);
+		model.addAttribute("packMissionBonusFixAnnouncementExpiredUnclaimed",
+				!packMissionBonusFixAnnClaimed && today.isAfter(GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_LAST_DAY));
+		model.addAttribute("packMissionBonusFixAnnouncementFutureUnclaimed",
+				!packMissionBonusFixAnnClaimed && today.isBefore(GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START));
+		model.addAttribute("packMissionBonusFixAnnouncementGemAmount",
+				GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS);
 
 		var gauge = timePackGaugeService.snapshotForUser(uid);
 		model.addAttribute("timePackFillPercent", gauge.fillPercent());
@@ -332,6 +363,48 @@ public class HomeController {
 		switch (outcome) {
 			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
 					GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/samurai-fix/claim")
+	public String claimSamuraiFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_SAMURAI_FIX_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimSamuraiFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_SAMURAI_FIX_GEMS + "ジェムを受け取りました。");
+			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
+			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
+		}
+		return "redirect:/home";
+	}
+
+	@PostMapping("/home/announcements/pack-mission-bonus-fix/claim")
+	public String claimPackMissionBonusFixAnnouncement(RedirectAttributes ra) {
+		long uid = CurrentUser.require().getId();
+		ZoneId zone = ZoneId.systemDefault();
+		LocalDate today = LocalDate.now(zone);
+		var u = appUserMapper.findById(uid);
+		if (!GameConstants.shouldListAnnouncementForUser(
+				today, u != null ? u.getCreatedAt() : null, zone, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START)) {
+			ra.addFlashAttribute("flashAnnouncementError", "このお知らせは受け取り対象外です。");
+			return "redirect:/home";
+		}
+		ClaimOutcome outcome = announcementRewardService.claimPackMissionBonusFixAnnouncementBonus(uid);
+		switch (outcome) {
+			case SUCCESS -> ra.addFlashAttribute("flashAnnouncementSuccess",
+					GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS + "ジェムを受け取りました。");
 			case ALREADY_CLAIMED -> ra.addFlashAttribute("flashAnnouncementError", "既に受け取り済みです。");
 			case NOT_YET_STARTED, EXPIRED -> ra.addFlashAttribute("flashAnnouncementError", "受け取り期限外です。");
 		}

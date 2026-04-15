@@ -149,6 +149,9 @@ public class MissionService {
 	public void onBonusPackOpened(long userId) {
 		ensureDailyMissions(userId);
 		ensureWeeklyMissions(userId);
+		// ボーナスパックも「パックを引く」系の回数に含める
+		bumpDaily(userId, "D_PACK", 1);
+		bumpWeekly(userId, "W_PACK", 1);
 		bumpDaily(userId, "D_BONUS", 1);
 		bumpWeekly(userId, "W_BONUS", 1);
 	}

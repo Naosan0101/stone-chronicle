@@ -15,13 +15,15 @@
                data-pack-result-draw-again-claimable=${packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain},
                data-captain-text-claimable=${captainTextAnnouncementClaimable and announcementListCaptainText},
                data-mission-fix-claimable=${missionFixAnnouncementClaimable and announcementListMissionFix},
-               data-card-text-fix-claimable=${cardTextFixAnnouncementClaimable and announcementListCardTextFix}">
+               data-card-text-fix-claimable=${cardTextFixAnnouncementClaimable and announcementListCardTextFix},
+               data-samurai-fix-claimable=${samuraiFixAnnouncementClaimable and announcementListSamuraiFix},
+               data-pack-mission-bonus-fix-claimable=${packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix}">
 <header class="topbar">
 	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
 	<div class="topbar__meta">
 		<button type="button"
 		        class="btn btn--ghost topbar__announce"
-		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
 		        id="announcement-open"
 		        aria-haspopup="dialog"
 		        aria-controls="announcement-modal">
@@ -206,6 +208,52 @@
 					<p th:if="${cardTextFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
 					<p th:if="${cardTextFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
 					<p th:if="${cardTextFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<article class="announcement-modal__card"
+		         th:if="${announcementListSamuraiFix and (samuraiFixAnnouncementClaimable or samuraiFixAnnouncementClaimed or samuraiFixAnnouncementExpiredUnclaimed or samuraiFixAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・サムライの効果が正しく動作しないのを修正しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${samuraiFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${samuraiFixAnnouncementClaimable}"
+					      th:action="@{/home/announcements/samurai-fix/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${samuraiFixAnnouncementGemAmount}ジェム|">3ジェム</button>
+					</form>
+					<p th:if="${samuraiFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${samuraiFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${samuraiFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<article class="announcement-modal__card"
+		         th:if="${announcementListPackMissionBonusFix and (packMissionBonusFixAnnouncementClaimable or packMissionBonusFixAnnouncementClaimed or packMissionBonusFixAnnouncementExpiredUnclaimed or packMissionBonusFixAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">・「カードパックを引く」ミッションでボーナスパックがカウントされていないのを修正しました。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${packMissionBonusFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${packMissionBonusFixAnnouncementClaimable}"
+					      th:action="@{/home/announcements/pack-mission-bonus-fix/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${packMissionBonusFixAnnouncementGemAmount}ジェム|">5ジェム</button>
+					</form>
+					<p th:if="${packMissionBonusFixAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${packMissionBonusFixAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${packMissionBonusFixAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
 				</aside>
 			</div>
 		</article>
@@ -408,6 +456,8 @@
 		var captainText = document.body.getAttribute('data-captain-text-claimable') === 'true';
 		var missionFix = document.body.getAttribute('data-mission-fix-claimable') === 'true';
 		var cardTextFix = document.body.getAttribute('data-card-text-fix-claimable') === 'true';
+		var samuraiFix = document.body.getAttribute('data-samurai-fix-claimable') === 'true';
+		var packMissionBonusFix = document.body.getAttribute('data-pack-mission-bonus-fix-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -415,7 +465,7 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}

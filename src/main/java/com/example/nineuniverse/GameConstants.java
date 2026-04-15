@@ -225,6 +225,26 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_CARD_TEXT_FIX_LAST_DAY =
 			ANNOUNCEMENT_CARD_TEXT_FIX_START.plusDays(30 - 1);
 
+	/** お知らせ配布（サムライ効果不具合の修正） */
+	public static final String ANNOUNCEMENT_SAMURAI_FIX_KEY = "samurai_fix_2026_04";
+
+	public static final int ANNOUNCEMENT_SAMURAI_FIX_GEMS = 3;
+
+	public static final LocalDate ANNOUNCEMENT_SAMURAI_FIX_START = LocalDate.of(2026, 4, 15);
+
+	public static final LocalDate ANNOUNCEMENT_SAMURAI_FIX_LAST_DAY =
+			ANNOUNCEMENT_SAMURAI_FIX_START.plusDays(30 - 1);
+
+	/** お知らせ配布（「カードパックを引く」ミッションでボーナスパックがカウントされない不具合の修正） */
+	public static final String ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_KEY = "pack_mission_bonus_fix_2026_04";
+
+	public static final int ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS = 5;
+
+	public static final LocalDate ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START = LocalDate.of(2026, 4, 15);
+
+	public static final LocalDate ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_LAST_DAY =
+			ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START.plusDays(30 - 1);
+
 	/**
 	 * お知らせモーダルで「新規ユーザー」に古い項目を出さないための判定。
 	 * 登録からこの日数以内を新規とみなし、{@link #announcementVisibleInNewUserWindow} と組み合わせる。
@@ -271,7 +291,7 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-16-5";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-16-7";
 
 	private GameConstants() {
 	}

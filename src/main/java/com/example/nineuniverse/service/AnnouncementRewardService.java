@@ -48,6 +48,14 @@ public class AnnouncementRewardService {
 		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_KEY);
 	}
 
+	public boolean hasClaimedSamuraiFixAnnouncement(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_SAMURAI_FIX_KEY);
+	}
+
+	public boolean hasClaimedPackMissionBonusFixAnnouncement(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_KEY);
+	}
+
 	/** 受け取り可能期間内（開始日〜終了日を含む）か。 */
 	public boolean isWithinPerfLightWindow(LocalDate today) {
 		if (today.isBefore(GameConstants.ANNOUNCEMENT_PERF_LIGHT_START)) {
@@ -108,6 +116,20 @@ public class AnnouncementRewardService {
 			return false;
 		}
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_LAST_DAY);
+	}
+
+	public boolean isWithinSamuraiFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_SAMURAI_FIX_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_SAMURAI_FIX_LAST_DAY);
+	}
+
+	public boolean isWithinPackMissionBonusFixAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_LAST_DAY);
 	}
 
 	public enum ClaimOutcome {
@@ -250,6 +272,41 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_CARD_TEXT_FIX_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimSamuraiFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_SAMURAI_FIX_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_SAMURAI_FIX_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_SAMURAI_FIX_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_SAMURAI_FIX_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claimPackMissionBonusFixAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(
+				userId, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 }
