@@ -245,6 +245,19 @@ public final class GameConstants {
 	public static final LocalDate ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_LAST_DAY =
 			ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_START.plusDays(30 - 1);
 
+	/** お知らせ配布（祝！ユーザー登録者数30人突破！） */
+	public static final String ANNOUNCEMENT_30_USERS_KEY = "celebrate_30_users_2026_04";
+
+	public static final int ANNOUNCEMENT_30_USERS_GEMS = 20;
+
+	public static final LocalDate ANNOUNCEMENT_30_USERS_START = LocalDate.of(2026, 4, 16);
+
+	public static final LocalDate ANNOUNCEMENT_30_USERS_LAST_DAY =
+			ANNOUNCEMENT_30_USERS_START.plusDays(30 - 1);
+
+	/** 運営より、皆様へ（ポップアップ表示＆お知らせから再閲覧） */
+	public static final LocalDate ANNOUNCEMENT_OPERATOR_MESSAGE_START = LocalDate.of(2026, 4, 16);
+
 	/**
 	 * お知らせモーダルで「新規ユーザー」に古い項目を出さないための判定。
 	 * 登録からこの日数以内を新規とみなし、{@link #announcementVisibleInNewUserWindow} と組み合わせる。
@@ -291,7 +304,7 @@ public final class GameConstants {
 	/**
 	 * お知らせの未読バッジ用。文言や項目を増やしたら値を変えてクライアントの既読をリセットする。
 	 */
-	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-16-7";
+	public static final String ANNOUNCEMENT_UI_EPOCH = "2026-04-16-8";
 
 	private GameConstants() {
 	}

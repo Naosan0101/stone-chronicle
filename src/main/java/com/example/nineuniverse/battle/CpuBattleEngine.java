@@ -6,9 +6,11 @@ import com.example.nineuniverse.web.dto.BattlePowerModifierDto;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -410,7 +412,34 @@ public class CpuBattleEngine {
 					st.addLog("ストーンを" + pc.getStoneCost() + "使用");
 					// ability ごとの追加処理
 					if ("SAMURAI".equals(pc.getAbilityDeployCode())) {
-						// 相手（CPU）が捨てるカードを自動選択（簡易: 最右＝末尾から2枚）
+						// 対人戦: 相手（ゲスト）が選んで捨てる。CPU戦: CPUは自動で捨てる。
+						if (st.isPvp()) {
+							List<String> opts = new ArrayList<>();
+							for (BattleCard c : st.getCpuHand()) opts.add(c.getInstanceId());
+							if (opts.size() == 1) {
+								st.setPendingChoice(new PendingChoice(
+										ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+										"サムライ（捨てるカードを1枚選択）",
+										false,
+										"SAMURAI",
+										0,
+										opts,
+										true
+								));
+							} else if (opts.size() >= 2) {
+								st.setPendingChoice(new PendingChoice(
+										ChoiceKind.SELECT_TWO_FROM_HAND_TO_REST,
+										"サムライ（捨てるカードを2枚選択）",
+										false,
+										"SAMURAI",
+										0,
+										opts,
+										true
+								));
+							}
+							return;
+						}
+						// CPU戦（簡易）: 最右＝末尾から2枚
 						int n = Math.min(2, st.getCpuHand().size());
 						for (int i = 0; i < n; i++) {
 							st.getCpuRest().add(st.getCpuHand().remove(st.getCpuHand().size() - 1));
@@ -610,6 +639,32 @@ public class CpuBattleEngine {
 					st.setCpuStones(st.getCpuStones() - pc.getStoneCost());
 					st.addLog("ストーンを" + pc.getStoneCost() + "使用");
 					if ("SAMURAI".equals(pc.getAbilityDeployCode())) {
+						// 対人戦: 相手（ホスト）が選んで捨てる。CPU戦: 人間が選ぶ（CPUが出した場合は applyDeployCpu で処理）。
+						if (st.isPvp()) {
+							List<String> opts = new ArrayList<>();
+							for (BattleCard c : st.getHumanHand()) opts.add(c.getInstanceId());
+							if (opts.size() == 1) {
+								st.setPendingChoice(new PendingChoice(
+										ChoiceKind.SELECT_ONE_FROM_HAND_TO_REST,
+										"サムライ（捨てるカードを1枚選択）",
+										true,
+										"SAMURAI",
+										0,
+										opts
+								));
+							} else if (opts.size() >= 2) {
+								st.setPendingChoice(new PendingChoice(
+										ChoiceKind.SELECT_TWO_FROM_HAND_TO_REST,
+										"サムライ（捨てるカードを2枚選択）",
+										true,
+										"SAMURAI",
+										0,
+										opts
+								));
+							}
+							return;
+						}
+						// 非PvP（保険）: 末尾から2枚
 						int n = Math.min(2, st.getHumanHand().size());
 						for (int i = 0; i < n; i++) {
 							st.getHumanRest().add(st.getHumanHand().remove(st.getHumanHand().size() - 1));
@@ -1857,6 +1912,9 @@ public class CpuBattleEngine {
 			List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
 			int undead = 0;
 			for (BattleCard c : rest) {
+				if (isTuckedUnderOwnFighter(zf, c)) {
+					continue;
+				}
 				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "UNDEAD")) {
 					undead++;
 				}
@@ -1970,6 +2028,9 @@ public class CpuBattleEngine {
 		if (id == HONE_ID) {
 			List<BattleCard> rest = ownerIsHuman ? st.getHumanRest() : st.getCpuRest();
 			for (BattleCard c : rest) {
+				if (isTuckedUnderOwnFighter(zf, c)) {
+					continue;
+				}
 				if (CardAttributes.hasAttribute(defs.get(c.getCardId()), "UNDEAD")) {
 					out.add(new BattlePowerModifierDto(c.getCardId(), null));
 				}
@@ -1981,6 +2042,34 @@ public class CpuBattleEngine {
 
 	private boolean hasRyuoh(ZoneFighter z) {
 		return z != null && z.getMain() != null && z.getMain().getCardId() == RYUOH_ID;
+	}
+
+	/**
+	 * バトルゾーンのメインの下に差し込まれたカード（コスト・レベルアップ消費など）はレストゾーンにいない。
+	 * 状態不整合で同一インスタンスがレスト一覧にも残っている場合、常時効果の「レストの枚数」から除外する。
+	 */
+	private static Set<String> battleCostUnderInstanceIds(ZoneFighter zf) {
+		Set<String> out = new HashSet<>();
+		if (zf == null || zf.getCostUnder() == null) {
+			return out;
+		}
+		for (BattleCard c : zf.getCostUnder()) {
+			if (c != null && c.getInstanceId() != null) {
+				out.add(c.getInstanceId());
+			}
+		}
+		return out;
+	}
+
+	private static boolean isTuckedUnderOwnFighter(ZoneFighter ownBattle, BattleCard restCard) {
+		if (restCard == null) {
+			return false;
+		}
+		String id = restCard.getInstanceId();
+		if (id == null) {
+			return false;
+		}
+		return battleCostUnderInstanceIds(ownBattle).contains(id);
 	}
 
 	private boolean restContainsAttribute(List<BattleCard> rest, Map<Short, CardDefinition> defs, String attr) {

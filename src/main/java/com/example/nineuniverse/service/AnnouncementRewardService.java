@@ -5,6 +5,8 @@ import com.example.nineuniverse.repository.AppUserMapper;
 import com.example.nineuniverse.repository.UserAnnouncementClaimMapper;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,14 @@ public class AnnouncementRewardService {
 
 	private final UserAnnouncementClaimMapper userAnnouncementClaimMapper;
 	private final AppUserMapper appUserMapper;
+
+	/**
+	 * ホーム画面などで「複数のお知らせの受け取り済み判定」をまとめて行う用途。
+	 * （個別 exists の多重発行を避ける）
+	 */
+	public Set<String> findClaimedKeys(long userId) {
+		return new HashSet<>(userAnnouncementClaimMapper.findClaimedKeys(userId));
+	}
 
 	public boolean hasClaimedPerfLight(long userId) {
 		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_PERF_LIGHT_KEY);
@@ -54,6 +64,10 @@ public class AnnouncementRewardService {
 
 	public boolean hasClaimedPackMissionBonusFixAnnouncement(long userId) {
 		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_KEY);
+	}
+
+	public boolean hasClaimed30UsersAnnouncement(long userId) {
+		return userAnnouncementClaimMapper.exists(userId, GameConstants.ANNOUNCEMENT_30_USERS_KEY);
 	}
 
 	/** 受け取り可能期間内（開始日〜終了日を含む）か。 */
@@ -130,6 +144,13 @@ public class AnnouncementRewardService {
 			return false;
 		}
 		return !today.isAfter(GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_LAST_DAY);
+	}
+
+	public boolean isWithin30UsersAnnouncementWindow(LocalDate today) {
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_30_USERS_START)) {
+			return false;
+		}
+		return !today.isAfter(GameConstants.ANNOUNCEMENT_30_USERS_LAST_DAY);
 	}
 
 	public enum ClaimOutcome {
@@ -307,6 +328,23 @@ public class AnnouncementRewardService {
 			return ClaimOutcome.ALREADY_CLAIMED;
 		}
 		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_PACK_MISSION_BONUS_FIX_GEMS);
+		return ClaimOutcome.SUCCESS;
+	}
+
+	@Transactional
+	public ClaimOutcome claim30UsersAnnouncementBonus(long userId) {
+		LocalDate today = LocalDate.now(ZoneId.systemDefault());
+		if (today.isBefore(GameConstants.ANNOUNCEMENT_30_USERS_START)) {
+			return ClaimOutcome.NOT_YET_STARTED;
+		}
+		if (today.isAfter(GameConstants.ANNOUNCEMENT_30_USERS_LAST_DAY)) {
+			return ClaimOutcome.EXPIRED;
+		}
+		int inserted = userAnnouncementClaimMapper.insertIfAbsent(userId, GameConstants.ANNOUNCEMENT_30_USERS_KEY);
+		if (inserted == 0) {
+			return ClaimOutcome.ALREADY_CLAIMED;
+		}
+		appUserMapper.addCoinsDelta(userId, GameConstants.ANNOUNCEMENT_30_USERS_GEMS);
 		return ClaimOutcome.SUCCESS;
 	}
 }

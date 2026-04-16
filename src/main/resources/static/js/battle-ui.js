@@ -2323,7 +2323,11 @@
 
 	function render(st) {
 		lastStateForHandPower = st;
-		lastDefsForTooltip = st.defs || null;
+		if (st.defs && Object.keys(st.defs).length > 0) {
+			lastDefsForTooltip = st.defs;
+		} else {
+			st.defs = lastDefsForTooltip || {};
+		}
 		app.innerHTML = '';
 		hideBattleCardTooltip();
 		hideBattleDeckTooltip();

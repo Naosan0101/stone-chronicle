@@ -35,6 +35,8 @@ public class CpuBattleService {
 	private final DeckService deckService;
 	private final MissionService missionService;
 
+	private volatile Map<Short, CardDefDto> cachedDefDtos;
+
 	@Transactional
 	public CpuBattleState start(long userId, long deckId, int level, HttpSession session) {
 		deckService.requireDeck(userId, deckId);
@@ -83,19 +85,27 @@ public class CpuBattleService {
 		}
 		enforceTimeoutIfNeeded(st, defs());
 		engine.humanTurnInteractive(st, levelUpRest, levelUpDiscardInstanceIds, levelUpStones, deployInstanceId, payCostStones, payCostCardInstanceIds, defs());
-		return stateDto(session);
+		return stateDto(session, false);
 	}
 
 	public CpuBattleStateDto stateDto(HttpSession session) {
+		return stateDto(session, true);
+	}
+
+	public CpuBattleStateDto stateDto(HttpSession session, boolean includeDefs) {
 		CpuBattleState st = current(session);
 		if (st == null) {
 			return null;
 		}
 		enforceTimeoutIfNeeded(st, defs());
-		return stateDtoFromState(st);
+		return stateDtoFromState(st, includeDefs);
 	}
 
 	public CpuBattleStateDto stateDtoFromState(CpuBattleState st) {
+		return stateDtoFromState(st, true);
+	}
+
+	public CpuBattleStateDto stateDtoFromState(CpuBattleState st, boolean includeDefs) {
 		maybeNotifyCpuWinMission(st);
 		Map<Short, CardDefinition> defs = defs();
 		int hbPow = engine.effectiveBattlePower(st.getHumanBattle(), true, st, defs);
@@ -104,34 +114,7 @@ public class CpuBattleService {
 		int activeStage = activeHuman ? st.getHumanTimePenaltyStage() : st.getCpuTimePenaltyStage();
 		int activeLimit = CpuBattleEngine.timeLimitSecForStage(activeStage);
 
-		Map<Short, CardDefDto> defDtos = defs.values().stream()
-				.collect(Collectors.toMap(
-						CardDefinition::getId,
-						d -> {
-							String rarity = d.getRarity();
-							String rar = rarity != null && !rarity.isBlank() ? rarity : "C";
-							return new CardDefDto(
-								d.getId(),
-								d.getName(),
-								(short) (d.getCost() != null ? d.getCost() : 0),
-								(short) (d.getBasePower() != null ? d.getBasePower() : 0),
-								d.getAttribute(),
-								rar,
-								rar,
-								d.getImageFile(),
-								d.getAbilityDeployCode(),
-								CardAttributeLabels.japaneseName(d.getAttribute()),
-								CardAttributeLabels.japaneseNameLines(d.getAttribute()),
-								GameConstants.CARD_LAYER_BASE,
-								GameConstants.cardLayerBarPath(d.getAttribute()),
-								GameConstants.CARD_LAYER_DATA,
-								GameConstants.namedTribePortraitLayerPath(d.getAttribute(), d.getName()),
-								CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
-										.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
-										.toList()
-							);
-						}
-				));
+		Map<Short, CardDefDto> defDtos = includeDefs ? defDtosCached() : null;
 
 		var pc = st.getPendingChoice();
 		boolean noLegalDeploy = false;
@@ -199,6 +182,48 @@ public class CpuBattleService {
 		);
 	}
 
+	private Map<Short, CardDefDto> defDtosCached() {
+		Map<Short, CardDefDto> cached = cachedDefDtos;
+		if (cached != null) {
+			return cached;
+		}
+		synchronized (this) {
+			if (cachedDefDtos != null) {
+				return cachedDefDtos;
+			}
+			Map<Short, CardDefinition> defs = defs();
+			cachedDefDtos = defs.values().stream()
+					.collect(Collectors.toMap(
+							CardDefinition::getId,
+							d -> {
+								String rarity = d.getRarity();
+								String rar = rarity != null && !rarity.isBlank() ? rarity : "C";
+								return new CardDefDto(
+									d.getId(),
+									d.getName(),
+									(short) (d.getCost() != null ? d.getCost() : 0),
+									(short) (d.getBasePower() != null ? d.getBasePower() : 0),
+									d.getAttribute(),
+									rar,
+									rar,
+									d.getImageFile(),
+									d.getAbilityDeployCode(),
+									CardAttributeLabels.japaneseName(d.getAttribute()),
+									CardAttributeLabels.japaneseNameLines(d.getAttribute()),
+									GameConstants.CARD_LAYER_BASE,
+									GameConstants.cardLayerBarPath(d.getAttribute()),
+									GameConstants.CARD_LAYER_DATA,
+									GameConstants.namedTribePortraitLayerPath(d.getAttribute(), d.getName()),
+									CardFaceAbilityFormatter.blocksForCardId(d.getId()).stream()
+											.map(b -> new AbilityBlockDto(b.getHeadline(), b.getBody()))
+											.toList()
+								);
+							}
+					));
+			return cachedDefDtos;
+		}
+	}
+
 	public CpuBattleStateDto cpuStep(HttpSession session) {
 		CpuBattleState st = current(session);
 		if (st == null) {
@@ -206,7 +231,7 @@ public class CpuBattleService {
 		}
 		enforceTimeoutIfNeeded(st, defs());
 		engine.cpuTurn(st, defs(), new Random());
-		return stateDto(session);
+		return stateDto(session, false);
 	}
 
 	public CpuBattleStateDto resolvePending(HttpSession session) {
@@ -216,7 +241,7 @@ public class CpuBattleService {
 		}
 		enforceTimeoutIfNeeded(st, defs());
 		engine.resolvePendingEffectAndAdvance(st, defs(), new Random());
-		return stateDto(session);
+		return stateDto(session, false);
 	}
 
 	public CpuBattleStateDto choose(HttpSession session, CpuBattleChoiceRequest req) {
@@ -232,14 +257,14 @@ public class CpuBattleService {
 				defs(),
 				new Random()
 		);
-		return stateDto(session);
+		return stateDto(session, false);
 	}
 
 	public CpuBattleStateDto timeoutTick(HttpSession session) {
 		CpuBattleState st = current(session);
 		if (st == null) return null;
 		enforceTimeoutIfNeeded(st, defs());
-		return stateDtoFromState(st);
+		return stateDtoFromState(st, false);
 	}
 
 	private void enforceTimeoutIfNeeded(CpuBattleState st, Map<Short, CardDefinition> defs) {

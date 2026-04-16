@@ -14,4 +14,10 @@
 			WHERE user_id = #{userId} AND announcement_key = #{announcementKey}
 		)
 	</select>
+
+	<select id="findClaimedKeys" resultType="string">
+		SELECT announcement_key
+		FROM user_announcement_claim
+		WHERE user_id = #{userId}
+	</select>
 </mapper>

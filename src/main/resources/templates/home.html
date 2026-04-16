@@ -17,13 +17,16 @@
                data-mission-fix-claimable=${missionFixAnnouncementClaimable and announcementListMissionFix},
                data-card-text-fix-claimable=${cardTextFixAnnouncementClaimable and announcementListCardTextFix},
                data-samurai-fix-claimable=${samuraiFixAnnouncementClaimable and announcementListSamuraiFix},
-               data-pack-mission-bonus-fix-claimable=${packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix}">
+               data-pack-mission-bonus-fix-claimable=${packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix},
+               data-celebrate-30-users-claimable=${celebrate30UsersAnnouncementClaimable and announcementList30Users},
+               data-operator-message-popup-enabled=${operatorMessagePopupEnabled and announcementListOperatorMessage},
+               data-user-id=${user.id}">
 <header class="topbar">
 	<div th:replace="~{fragments/game-title-brand :: brand}"></div>
 	<div class="topbar__meta">
 		<button type="button"
 		        class="btn btn--ghost topbar__announce"
-		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
+		        th:classappend="${(perfLightAnnouncementClaimable and announcementListPerfLight) or (timePackAnnouncementClaimable and announcementListTimePack) or (balanceUiMissionAnnouncementClaimable and announcementListBalanceUiMission) or (packRatesAnnouncementClaimable and announcementListPackRates) or (packResultDrawAgainAnnouncementClaimable and announcementListPackResultDrawAgain) or (captainTextAnnouncementClaimable and announcementListCaptainText) or (missionFixAnnouncementClaimable and announcementListMissionFix) or (cardTextFixAnnouncementClaimable and announcementListCardTextFix) or (samuraiFixAnnouncementClaimable and announcementListSamuraiFix) or (packMissionBonusFixAnnouncementClaimable and announcementListPackMissionBonusFix) or (celebrate30UsersAnnouncementClaimable and announcementList30Users) or (timePackAvailablePacks != null and timePackAvailablePacks > 0)} ? ' topbar__announce--highlight' : ''"
 		        id="announcement-open"
 		        aria-haspopup="dialog"
 		        aria-controls="announcement-modal">
@@ -216,7 +219,7 @@
 		         th:if="${announcementListSamuraiFix and (samuraiFixAnnouncementClaimable or samuraiFixAnnouncementClaimed or samuraiFixAnnouncementExpiredUnclaimed or samuraiFixAnnouncementFutureUnclaimed)}">
 			<div class="announcement-modal__mailbox">
 				<div class="announcement-modal__mailbox-body">
-					<p class="announcement-modal__card-text">・サムライの効果が正しく動作しないのを修正しました。</p>
+					<p class="announcement-modal__card-text">・「サムライ」の効果が対人戦にて正しく処理されていないのを修正しました。</p>
 				</div>
 				<aside class="announcement-modal__mailbox-aside">
 					<span th:if="${samuraiFixAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
@@ -258,10 +261,75 @@
 			</div>
 		</article>
 
+		<article class="announcement-modal__card"
+		         th:if="${announcementList30Users and (celebrate30UsersAnnouncementClaimable or celebrate30UsersAnnouncementClaimed or celebrate30UsersAnnouncementExpiredUnclaimed or celebrate30UsersAnnouncementFutureUnclaimed)}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">祝！ユーザー登録者数30人突破！</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<span th:if="${celebrate30UsersAnnouncementClaimable}" class="announcement-modal__deadline">受け取り期限 30日</span>
+					<form th:if="${celebrate30UsersAnnouncementClaimable}"
+					      th:action="@{/home/announcements/celebrate-30-users/claim}"
+					      method="post"
+					      class="announcement-modal__gem-form">
+						<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+						<button type="submit" class="btn btn--primary announcement-modal__gem-btn"
+						        th:text="|${celebrate30UsersAnnouncementGemAmount}ジェム|">20ジェム</button>
+					</form>
+					<p th:if="${celebrate30UsersAnnouncementClaimed}" class="announcement-modal__card-status ok">受け取り済み</p>
+					<p th:if="${celebrate30UsersAnnouncementExpiredUnclaimed}" class="announcement-modal__card-status muted">受け取り期限が過ぎました</p>
+					<p th:if="${celebrate30UsersAnnouncementFutureUnclaimed}" class="announcement-modal__card-status muted">受け取り開始前です</p>
+				</aside>
+			</div>
+		</article>
+
+		<article class="announcement-modal__card" th:if="${announcementListOperatorMessage}">
+			<div class="announcement-modal__mailbox">
+				<div class="announcement-modal__mailbox-body">
+					<p class="announcement-modal__card-text">運営より、皆様へ</p>
+					<p class="announcement-modal__card-text muted">※「閉じる」を押したあとも、ここからいつでも確認できます。</p>
+				</div>
+				<aside class="announcement-modal__mailbox-aside">
+					<button type="button" class="btn btn--ghost" id="operator-message-open">開く</button>
+				</aside>
+			</div>
+		</article>
+
 		<div th:replace="~{fragments/announcement-captain-text :: card}"></div>
 		<p th:if="${flashAnnouncementSuccess}" class="announcement-modal__flash ok" th:text="${flashAnnouncementSuccess}">受け取りました。</p>
 		<p th:if="${flashAnnouncementError}" class="announcement-modal__flash err" th:text="${flashAnnouncementError}">エラー</p>
 		<button type="button" class="btn btn--ghost announcement-modal__close" id="announcement-close">閉じる</button>
+	</div>
+</div>
+
+<div id="operator-message-modal"
+     class="announcement-modal"
+     hidden
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="operator-message-modal-title"
+     aria-hidden="true">
+	<div class="announcement-modal__panel" role="document">
+		<h2 id="operator-message-modal-title" class="announcement-modal__heading">運営より、皆様へ</h2>
+		<article class="announcement-modal__card">
+			<div class="announcement-modal__mailbox-body">
+				<p class="announcement-modal__card-text operator-message__gap operator-message__italic">ユーザーのみなさまへ</p>
+				<p class="announcement-modal__card-text">サービス開始から3日が経過し、おかげさまで<span class="operator-message__emph">ユーザー登録者数が30人を突破</span>しました！</p>
+				<p class="announcement-modal__card-text">みなさまの熱い応援のおかげで、日々アップデートを重ねることができています。</p>
+				<p class="announcement-modal__card-text">心より、御礼を申し上げます。</p>
+				<p class="announcement-modal__card-text operator-message__gap">より良いゲームになるよう、運営ともども頑張っていきますので、引き続きよろしくお願いいたします。</p>
+				<p class="announcement-modal__card-text operator-message__gap operator-message__emph">また、4/20（月）11:50～12:30の間で超大型アップデートを予定しております。</p>
+				<p class="announcement-modal__card-text">アップデートの内容は以下の通りです。</p>
+				<p class="announcement-modal__card-text">・新カードパック「スタンダードパック2」「宝石の秘境パック」「鉄面の艦隊パック」の追加にともない、新たなカード30枚の追加。</p>
+				<p class="announcement-modal__card-text">・BGM,SEの追加</p>
+				<p class="announcement-modal__card-text">・各種UIの見直し</p>
+				<p class="announcement-modal__card-text operator-message__gap">より良いゲームにしていきたいと思いますので、次のアップデートをお楽しみにお待ちください。</p>
+				<p class="announcement-modal__card-text operator-message__gap">それでは、引き続き『ナインユニバース』をお楽しみください。</p>
+				<p class="announcement-modal__card-text operator-message__italic">ナインユニバース 運営</p>
+			</div>
+		</article>
+		<button type="button" class="btn btn--ghost announcement-modal__close" id="operator-message-close">閉じる</button>
 	</div>
 </div>
 
@@ -458,6 +526,7 @@
 		var cardTextFix = document.body.getAttribute('data-card-text-fix-claimable') === 'true';
 		var samuraiFix = document.body.getAttribute('data-samurai-fix-claimable') === 'true';
 		var packMissionBonusFix = document.body.getAttribute('data-pack-mission-bonus-fix-claimable') === 'true';
+		var celebrate30 = document.body.getAttribute('data-celebrate-30-users-claimable') === 'true';
 		var ack = '';
 		try {
 			ack = localStorage.getItem('nu_ann_ack') || '';
@@ -465,12 +534,58 @@
 			ack = '';
 		}
 		var unseen = epoch !== '' && ack !== epoch;
-		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || unseen;
+		var show = perf || ttp || bal || pack || drawAgain || captainText || missionFix || cardTextFix || samuraiFix || packMissionBonusFix || celebrate30 || unseen;
 		dot.hidden = !show;
 		dot.setAttribute('aria-hidden', show ? 'false' : 'true');
 	}
 	window.syncAnnouncementUnreadDot = syncAnnouncementUnreadDot;
 	syncAnnouncementUnreadDot();
+})();
+</script>
+<script>
+(function () {
+	var modal = document.getElementById('operator-message-modal');
+	var openBtn = document.getElementById('operator-message-open');
+	var closeBtn = document.getElementById('operator-message-close');
+	if (!modal || !openBtn || !closeBtn) return;
+
+	function openOperatorMessage() {
+		modal.hidden = false;
+		modal.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+		closeBtn.focus();
+	}
+	function closeOperatorMessage() {
+		modal.hidden = true;
+		modal.setAttribute('aria-hidden', 'true');
+		document.body.style.overflow = '';
+		openBtn.focus();
+	}
+	openBtn.addEventListener('click', openOperatorMessage);
+	closeBtn.addEventListener('click', closeOperatorMessage);
+	modal.addEventListener('click', function (e) {
+		if (e.target === modal) closeOperatorMessage();
+	});
+	document.addEventListener('keydown', function (e) {
+		if (e.key === 'Escape' && !modal.hidden) closeOperatorMessage();
+	});
+
+	/* 4/19(日)23:59までにログインしたユーザーは、起動後最初の1回だけ自動表示 */
+	var enabled = document.body.getAttribute('data-operator-message-popup-enabled') === 'true';
+	if (!enabled) return;
+	var uid = document.body.getAttribute('data-user-id') || '';
+	var key = 'nu_operator_message_shown_' + uid + '_2026-04-19';
+	var already = false;
+	try {
+		already = sessionStorage.getItem(key) === '1';
+	} catch (e) {
+		already = false;
+	}
+	if (already) return;
+	try {
+		sessionStorage.setItem(key, '1');
+	} catch (e) { /* ignore */ }
+	openOperatorMessage();
 })();
 </script>
 <script>
