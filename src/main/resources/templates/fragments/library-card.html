@@ -5,6 +5,7 @@
 	<button type="button" class="library-card__open"
 			th:disabled="${!c.owned}"
 			th:data-name="${c.name}"
+			th:data-display-name="${c.owned ? c.name : '？？？？'}"
 			th:data-attribute="${c.attribute}"
 			th:data-rarity="${c.rarity}"
 			th:data-rarity-label="${c.rarityLabel}"

@@ -174,11 +174,26 @@
 		return attr.indexOf('_') !== -1;
 	}
 
+	function cardDisplayName(d) {
+		if (d.owned === 'true') {
+			return d.name || '';
+		}
+		return d.displayName || '？？？？';
+	}
+
+	function maskLockedCardName(cardEl, btn) {
+		if (!cardEl || !btn || btn.dataset.owned === 'true') return;
+		const nameEl = cardEl.querySelector('.card-face__name');
+		if (nameEl) {
+			nameEl.textContent = cardDisplayName(btn.dataset);
+		}
+	}
+
 	function showHoverTooltip(btn, clientX, clientY) {
 		if (!tooltipEl || !tooltipName) return;
 		const d = btn.dataset;
 		const owned = d.owned === 'true';
-		tooltipName.textContent = d.name || '';
+		tooltipName.textContent = cardDisplayName(d);
 		const compound = tooltipAttributeIsCompound(d);
 		if (tooltipEl.classList) tooltipEl.classList.toggle('deck-tooltip--wide-attr', compound);
 		if (tooltipAttr) {
@@ -316,8 +331,9 @@
 			modalPower.className = 'card-face__power';
 			if (pn === 4) modalPower.classList.add('card-face__power--digit-4');
 		}
-		if (modalName) modalName.textContent = d.name || '';
-		if (sideTitle) sideTitle.textContent = d.name || '';
+		const displayName = cardDisplayName(d);
+		if (modalName) modalName.textContent = displayName;
+		if (sideTitle) sideTitle.textContent = displayName;
 		if (sideCost) sideCost.textContent = d.cost != null && d.cost !== '' ? String(d.cost) : '—';
 		if (sidePower) sidePower.textContent = d.basePower != null && d.basePower !== '' ? String(d.basePower) : '—';
 		if (modalAttr) {
@@ -457,6 +473,7 @@
 	document.querySelectorAll('.library-card').forEach(function (card) {
 		const btn = card.querySelector('.library-card__open');
 		if (!btn) return;
+		maskLockedCardName(card, btn);
 		// 一覧側のレイヤー画像も、読み込み失敗時に壊れアイコンが出ないようにする
 		wireCardFaceImgFallbacks(card);
 		bindHoverTooltip(card, btn);
@@ -466,6 +483,10 @@
 
 		const rarity = (btn.dataset.rarity || 'C').trim();
 		const owned = btn.dataset.owned === 'true';
+		const faceName = card.querySelector('.card-face__name');
+		if (faceName) {
+			faceName.textContent = cardDisplayName(btn.dataset);
+		}
 		if (owned && rarity !== 'C' && typeof fillContinuousCardSpark === 'function') {
 			const spark = card.querySelector('.card-face .card-spark');
 			if (spark) {
